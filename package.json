@@ -1,0 +1,23 @@
+{
+  "name": "relay4u-qa-automation",
+  "version": "1.0.0",
+  "description": "QA automation framework for [connect.relay4u.eu](https://connect.relay4u.eu) — a LinkedIn contact management tool.",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/petryniy1/relay4u-qa-automation.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/petryniy1/relay4u-qa-automation/issues"
+  },
+  "homepage": "https://github.com/petryniy1/relay4u-qa-automation#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1"
+  }
+}
