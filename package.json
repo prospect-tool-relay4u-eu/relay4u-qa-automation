@@ -13,16 +13,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/petryniy1/relay4u-qa-automation.git"
+    "url": "git+https://github.com/prospect-tool-relay4u-eu/relay4u-qa-automation.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/petryniy1/relay4u-qa-automation/issues"
+    "url": "https://github.com/prospect-tool-relay4u-eu/relay4u-qa-automation/issues"
   },
-  "homepage": "https://github.com/petryniy1/relay4u-qa-automation#readme",
+  "homepage": "https://github.com/prospect-tool-relay4u-eu/relay4u-qa-automation#readme",
   "lint-staged": {
     "*.js": [
       "eslint --fix",

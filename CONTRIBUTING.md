@@ -4,13 +4,90 @@ This document explains how to get the project running locally and the
 conventions used across the codebase. Read this before writing your first
 test.
 
-## 1. Local setup
+## 1. Clone & create your branch
 
-1. Clone the repository and install dependencies:
+Do this first, before installing anything — we never work directly on
+`main`, so your branch should exist before you touch any files.
+
+1. Clone the repository:
 
    ```
-   git clone https://github.com/petryniy1/relay4u-qa-automation.git
+   git clone https://github.com/prospect-tool-relay4u-eu/relay4u-qa-automation.git
    cd relay4u-qa-automation
+   ```
+
+2. Create your own branch off `main`, named like this:
+
+   ```
+   <your-name>/<test-id>-<short-title>
+   ```
+
+   Example:
+
+   ```
+   git checkout -b anton/tc-auth-002-login
+   ```
+
+   Your name first, then the test case ID you're working on, then a short
+   title — this makes it obvious from the branch list who is working on
+   what.
+
+3. Commit your work as you go, using [Conventional Commits](https://www.conventionalcommits.org/):
+
+   ```
+   type: short summary
+
+   - detail 1
+   - detail 2
+   ```
+
+   Types in use — what each one means and when to use it:
+
+   | Type       | Use it for                                                                                 |
+   | ---------- | ------------------------------------------------------------------------------------------ |
+   | `feat`     | A new capability: a new test, a new Page Object, a new fixture/helper.                     |
+   | `fix`      | Fixing something that was broken in the framework/test code itself.                        |
+   | `chore`    | Infrastructure/routine work that isn't a feature or a fix — config, deps, scaffolding.     |
+   | `test`     | Changes limited to test files (e.g. adjusting assertions) without touching framework code. |
+   | `docs`     | Documentation-only changes (README, this file, code comments).                             |
+   | `ci`       | Changes to the CI/CD pipeline (`.github/workflows`).                                       |
+   | `refactor` | Restructuring existing code without changing its behavior.                                 |
+
+   Apply the same format to PR titles. Two short examples:
+
+   ```
+   feat: add LoginPage and TC-AUTH-002 login test
+   ```
+
+   ```
+   fix: correct HomePage log in link locator
+   ```
+
+4. Push your branch and open a Pull Request into `main`:
+
+   ```
+   git push -u origin <your-name>/<test-id>-<short-title>
+   ```
+
+   Write a PR description that summarizes what changed since the previous
+   PR/checkpoint — what was added, what's still blocked, anything the
+   reviewer should pay attention to. Link the related Linear ticket(s) if
+   applicable, and wait for review before merging.
+
+Every time you start a **new** piece of work later on, repeat steps 1-4
+from your local `main`:
+
+```
+git checkout main
+git pull
+git checkout -b <your-name>/<test-id>-<short-title>
+```
+
+## 2. Local setup
+
+1. Install dependencies:
+
+   ```
    npm install
    ```
 
@@ -41,7 +118,7 @@ test.
    npx playwright test --debug  # step-by-step with Playwright Inspector
    ```
 
-## 2. Code quality tools
+## 3. Code quality tools
 
 npm scripts (shortcuts, use these day to day):
 
@@ -68,7 +145,7 @@ which lints and formats only the files you changed. If it blocks your
 commit, fix the reported issue and commit again — do not bypass it with
 `--no-verify`.
 
-## 3. Project structure
+## 4. Project structure
 
 | Folder                 | Purpose                                                                |
 | ---------------------- | ---------------------------------------------------------------------- |
@@ -92,7 +169,7 @@ Empty folders contain a `.gitkeep` placeholder so the structure is visible
 on GitHub even before real files land in them — delete the `.gitkeep` once
 you add a real file to that folder.
 
-## 4. Writing a test
+## 5. Writing a test
 
 ### File naming
 
@@ -141,7 +218,7 @@ await signUpPage.signUp(user.fullName, user.email, user.password);
 - Tag tests where relevant: `@smoke`, `@regression`, `@security`, `@idor`,
   `@crud` (append to the test title, e.g. `'TC-SEC-001: ... @security'`).
 
-## 5. Writing a Page Object
+## 6. Writing a Page Object
 
 Each page is a plain JS class in `pages/`. Constructor takes the Playwright
 `page` and stores locators as readonly-by-convention fields; add one method
@@ -176,71 +253,3 @@ Prefer `getByRole` / `getByLabel` / `getByPlaceholder` locators over CSS
 selectors — they are more resistant to markup changes. If you're unsure
 what a locator should be, run `npx playwright codegen <url>` and interact
 with the page manually; it generates the locator code for you.
-
-## 6. Branching workflow
-
-We work on personal feature branches, never commit directly to `main`.
-
-1. Make sure your local `main` is up to date:
-
-   ```
-   git checkout main
-   git pull
-   ```
-
-2. Create your own branch off `main` for the piece of work you're doing:
-
-   ```
-   git checkout -b feature/tc-auth-002-login
-   ```
-
-   Name the branch after what it does (e.g. `feature/tc-auth-002-login`,
-   `fix/registration-error-message`) so it's clear from the branch list
-   what everyone is working on.
-
-3. Commit your work (see commit message format below) and push your branch:
-
-   ```
-   git push -u origin feature/tc-auth-002-login
-   ```
-
-4. Open a Pull Request into `main` on GitHub. Write a description that
-   summarizes what changed since the previous PR/checkpoint — what was
-   added, what's still blocked, anything the reviewer should pay attention
-   to. Link the related Linear ticket(s) if applicable.
-5. Wait for review before merging.
-
-## 7. Commit messages
-
-This repo uses [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-type: short summary
-
-- detail 1
-- detail 2
-```
-
-Types in use — what each one means and when to use it:
-
-| Type       | Use it for                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------------ |
-| `feat`     | A new capability: a new test, a new Page Object, a new fixture/helper.                     |
-| `fix`      | Fixing something that was broken in the framework/test code itself.                        |
-| `chore`    | Infrastructure/routine work that isn't a feature or a fix — config, deps, scaffolding.     |
-| `test`     | Changes limited to test files (e.g. adjusting assertions) without touching framework code. |
-| `docs`     | Documentation-only changes (README, this file, code comments).                             |
-| `ci`       | Changes to the CI/CD pipeline (`.github/workflows`).                                       |
-| `refactor` | Restructuring existing code without changing its behavior.                                 |
-
-Apply the same format to PR titles.
-
-Two short examples:
-
-```
-feat: add LoginPage and TC-AUTH-002 login test
-```
-
-```
-fix: correct HomePage log in link locator
-```
