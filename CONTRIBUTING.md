@@ -13,7 +13,7 @@ Do this first, before installing anything — we never work directly on
 
    ```
    git clone https://github.com/prospect-tool-relay4u-eu/relay4u-qa-automation.git
-   cd relay4u-qa-automation
+
    ```
 
 2. Create your own branch off `main`, named like this:
