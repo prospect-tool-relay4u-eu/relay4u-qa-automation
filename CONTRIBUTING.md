@@ -32,6 +32,12 @@ Do this first, before installing anything — we never work directly on
    title — this makes it obvious from the branch list who is working on
    what.
 
+   Easiest way to get the exact name: open the scenario's card in
+   [Linear.app](https://linear.app), click the "Copy git branch name" icon
+   in the top-right corner of the card, and use that directly instead of
+   typing it out by hand. One branch per scenario — start a new one before
+   picking up the next card.
+
 3. Commit your work as you go, using [Conventional Commits](https://www.conventionalcommits.org/):
 
    ```
@@ -63,16 +69,20 @@ Do this first, before installing anything — we never work directly on
    fix: correct HomePage log in link locator
    ```
 
-4. Push your branch and open a Pull Request into `main`:
+4. Once the scenario works, commit and push with a **short** description
+   of what you did (see the commit types table above). Then, before
+   opening the PR, update [`DEVLOG.md`](./DEVLOG.md) and, if relevant,
+   [`REFERENCE.md`](./REFERENCE.md) — see
+   [section 7](#7-keeping-the-docs-updated) for exactly what belongs in
+   each.
 
    ```
    git push -u origin <your-name>/<test-id>-<short-title>
    ```
 
-   Write a PR description that summarizes what changed since the previous
-   PR/checkpoint — what was added, what's still blocked, anything the
-   reviewer should pay attention to. Link the related Linear ticket(s) if
-   applicable, and wait for review before merging.
+   Open a Pull Request into `main` and copy your new `DEVLOG.md` entry
+   straight into the PR description — it's written for exactly that. Link
+   the related Linear ticket(s), and wait for review before merging.
 
 Every time you start a **new** piece of work later on, repeat steps 1-4
 from your local `main`:
@@ -82,6 +92,31 @@ git checkout main
 git pull
 git checkout -b <your-name>/<test-id>-<short-title>
 ```
+
+---
+
+## ⚠️ HOW TO RUN TESTS — READ THIS BEFORE YOU RUN ANYTHING
+
+```
+npm run test:no-quota
+```
+
+**THIS IS THE ONLY COMMAND YOU SHOULD RUN DAY TO DAY.** It runs every test
+except the ones tagged `@email-quota` (currently `TC-AUTH-001`). Those
+tests send a real email through testmail.app — a shared team quota of
+**100 emails/month, for everyone combined**. Running the wrong command a
+few times can burn through it.
+
+Writing or debugging a test and want to interact with it visually?
+
+```
+npx playwright test --ui
+```
+
+This is safe to use freely — UI Mode does **not** run anything by itself,
+it only runs a test once you click it, including `@email-quota` tests.
+
+---
 
 ## 2. Local setup
 
@@ -110,13 +145,7 @@ git checkout -b <your-name>/<test-id>-<short-title>
    npx playwright install
    ```
 
-4. Run the tests:
-
-   ```
-   npx playwright test          # headless, all browsers
-   npx playwright test --ui     # interactive UI mode, recommended while writing tests
-   npx playwright test --debug  # step-by-step with Playwright Inspector
-   ```
+   See the box above for how to actually run the tests.
 
 ## 3. Code quality tools
 
@@ -217,6 +246,10 @@ await signUpPage.signUp(user.fullName, user.email, user.password);
   will warn if you do.
 - Tag tests where relevant: `@smoke`, `@regression`, `@security`, `@idor`,
   `@crud` (append to the test title, e.g. `'TC-SEC-001: ... @security'`).
+- Tag any test that sends a real email (via `createTestEmail()` /
+  `getVerificationCode()`, see `REFERENCE.md`) with `@email-quota` — see
+  the "HOW TO RUN TESTS" box after section 1 for how to exclude these from
+  a normal test run.
 
 ## 6. Writing a Page Object
 
@@ -253,3 +286,22 @@ Prefer `getByRole` / `getByLabel` / `getByPlaceholder` locators over CSS
 selectors — they are more resistant to markup changes. If you're unsure
 what a locator should be, run `npx playwright codegen <url>` and interact
 with the page manually; it generates the locator code for you.
+
+## 7. Keeping the docs updated
+
+Two files track the framework as it grows — update both **before opening
+your PR**, as part of finishing the scenario, not as an afterthought:
+
+- **`DEVLOG.md`** — add a new dated entry
+  (`## YYYY-MM-DD HH:MM — short title`) describing what you built and how
+  to run/use it. Write it so it can be copy-pasted straight into your PR
+  description (see step 4 in section 1).
+- **`REFERENCE.md`** — if you added or changed a Page Object, helper, or
+  shared constant, add or update its `<details>` entry: what it does, its
+  public methods, and any gotchas (cost, edge cases, required env vars).
+  If the file already has an entry, keep it accurate — don't leave a stale
+  description behind after changing behavior.
+
+Both files exist so the next person (teammate or future you) can find out
+what already exists and how to use it without re-reading every diff in the
+git history.

@@ -1,8 +1,9 @@
-import { expect } from '@playwright/test';
+import { expect } from '../helpers/testStep';
+import { BasePage } from './BasePage';
 
-export class HomePage {
-  constructor(page) {
-    this.page = page;
+export class HomePage extends BasePage {
+  constructor(page, actorLabel = null) {
+    super(page, actorLabel);
     this.signUpLink = page.getByRole('link', { name: 'Sign up for free' });
     this.logInLink = page.getByRole('link', {
       name: 'I already have an account',
@@ -13,18 +14,26 @@ export class HomePage {
   }
 
   async goto() {
-    await this.page.goto('/');
+    await this.step(`Open the home page`, async () => {
+      await this.page.goto('/');
+    });
   }
 
   async clickSignUp() {
-    await this.signUpLink.click();
+    await this.step(`Click "Sign up for free"`, async () => {
+      await this.signUpLink.click();
+    });
   }
 
   async clickLogIn() {
-    await this.logInLink.click();
+    await this.step(`Click "I already have an account"`, async () => {
+      await this.logInLink.click();
+    });
   }
 
   async assertLoaded() {
-    await expect(this.pageAnchor).toBeVisible();
+    await this.step(`Assert home page is loaded`, async () => {
+      await expect(this.pageAnchor).toBeVisible();
+    });
   }
 }
