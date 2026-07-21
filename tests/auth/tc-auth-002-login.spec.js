@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { HomePage } from '../../pages/HomePage';
-import { LoginPage } from '../../pages/LoginPage';
+import { LoginPage } from '../../pages/auth/LoginPage';
 import { existingUser } from '../../helpers/testData/existingUser';
 
 test('TC-AUTH-002: Login with valid credentials returns JWT', async ({
