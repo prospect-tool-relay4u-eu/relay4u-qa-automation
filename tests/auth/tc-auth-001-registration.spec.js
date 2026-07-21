@@ -10,7 +10,7 @@ import {
   getVerificationCode,
 } from '../../helpers/email/getVerificationCode';
 
-test('TC-AUTH-001', async ({ page }) => {
+test('TC-AUTH-001 @email-quota', async ({ page }) => {
   const { email, tag } = createTestEmail();
   const user = { ...generateNewUser(), email };
   const homePage = new HomePage(page, user.fullName);
