@@ -15,6 +15,7 @@ export class SignUpPage extends BasePage {
     });
     this.signUpButton = page.getByRole('button', { name: 'Sign up' });
     this.pageAnchor = page.getByRole('link', { name: 'Relay4U Relay4U' });
+    this.errorMessage = page.locator('.alert-error');
   }
 
   async signUp(fullName, email, password) {
@@ -42,6 +43,12 @@ export class SignUpPage extends BasePage {
   async assertLoaded() {
     await this.step(`Assert sign up page is loaded`, async () => {
       await expect(this.pageAnchor).toBeVisible();
+    });
+  }
+
+  async assertErrorMessage(message) {
+    await this.step(`Assert error message "${message}" is shown`, async () => {
+      await expect(this.errorMessage).toContainText(message);
     });
   }
 }

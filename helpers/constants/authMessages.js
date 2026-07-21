@@ -4,4 +4,5 @@ export const AUTH_MESSAGES = {
   PASSWORD_REQUIREMENTS:
     'Password must contain at least one uppercase letter, ' +
     'one digit and one special character',
+  GENERIC_ERROR: 'An error occurred. Please try again.',
 };
