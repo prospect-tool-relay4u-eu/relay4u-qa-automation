@@ -64,6 +64,10 @@ The `/` landing page — entry point for both registration and login.
 - `signUp(fullName, email, password)` — fills all four fields and clicks
   "Sign up"
 - `assertLoaded()`
+- `assertErrorMessage(message)` — asserts the `.alert-error` banner
+  contains `message`. Currently the app always shows
+  `AUTH_MESSAGES.GENERIC_ERROR` regardless of the real reason — see
+  `TC-AUTH-009` (known bug, tracked with `test.fail()`).
 
 </details>
 
@@ -152,9 +156,9 @@ Requires `TESTMAIL_API_KEY`, `TESTMAIL_API_URL`, `TESTMAIL_NAMESPACE` in
 <summary><code>helpers/constants/authMessages.js</code></summary>
 
 `AUTH_MESSAGES` — exact strings the app shows for auth-related states
-(verified, invalid credentials, password requirements). Import this
-instead of hardcoding the string in a Page Object, and match locators with
-`{ exact: true }` against it.
+(verified, invalid credentials, password requirements, generic sign-up
+error). Import this instead of hardcoding the string in a Page Object, and
+match locators with `{ exact: true }` against it.
 
 Each domain gets its own file (`fieldMessages.js`, `projectMessages.js`,
 etc.) instead of one shared file, to avoid merge conflicts between people

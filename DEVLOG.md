@@ -7,6 +7,33 @@ written to be copy-pasted straight into the matching PR description.
 
 ---
 
+## 2026-07-22 — TC-AUTH-009 documents a known registration bug
+
+New scenario: registering with a password missing one required
+character class (e.g. no special character) shows a generic "An error
+occurred. Please try again." instead of the real backend validation
+reason ("Password must contain at least one uppercase letter, one
+digit and one special character"). The test asserts the _correct_
+behavior and uses Playwright's `test.fail()` to mark it as a known,
+expected failure — it'll flag itself ("unexpectedly passed") the
+moment someone fixes the frontend.
+
+**Run it:** `npx playwright test tests/auth/tc-auth-009-registration-invalid-password.spec.js`
+— no real email gets sent (registration is rejected before the backend
+would send one), so this doesn't touch the testmail.app quota.
+
+**New:**
+
+- `tests/auth/tc-auth-009-registration-invalid-password.spec.js` — the
+  scenario above.
+- `pages/auth/SignUpPage.js` — added `errorMessage` locator
+  (`.alert-error`) and `assertErrorMessage(message)`.
+- `helpers/constants/authMessages.js` — added `GENERIC_ERROR`, the
+  current (buggy) text shown on any sign-up error.
+- See `REFERENCE.md` for how to use any of the above.
+
+---
+
 ## 2026-07-21 18:12 — TC-AUTH-001 runs end-to-end, plus the framework pieces it needed
 
 `tests/auth/tc-auth-001-registration.spec.js` now covers the full

@@ -151,6 +151,8 @@ it only runs a test once you click it, including `@email-quota` tests.
 
 npm scripts (shortcuts, use these day to day):
 
+- `npx playwright codegen https://relay4u-fe-staging-942989865043.europe-west1.run.app/` - A great way to quickly find locators.
+
 - `npm run lint` — check code with ESLint (includes `eslint-plugin-playwright`
   rules, e.g. no `page.waitForTimeout()`, no `page.pause()` left in committed
   code).
