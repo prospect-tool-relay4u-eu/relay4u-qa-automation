@@ -255,17 +255,21 @@ await signUpPage.signUp(user.fullName, user.email, user.password);
 
 ## 6. Writing a Page Object
 
-Each page is a plain JS class in `pages/`. Constructor takes the Playwright
-`page` and stores locators as readonly-by-convention fields; add one method
-per user action, plus an `assertLoaded()` method anchored to something
-unique to that page:
+Each page is a plain JS class in `pages/` (or `pages/auth/` for
+auth-flow pages), **extending `BasePage`**. Constructor takes the
+Playwright `page` and an optional `actorLabel`, and stores locators as
+readonly-by-convention fields. **Wrap every action and assertion in
+`this.step(title, callback)`** — inherited from `BasePage` — so it shows
+up named in the HTML report/trace. Add one method per user action, plus
+an `assertLoaded()` method anchored to something unique to that page:
 
 ```js
-import { expect } from '@playwright/test';
+import { expect } from '../helpers/testStep';
+import { BasePage } from './BasePage';
 
-export class LoginPage {
-  constructor(page) {
-    this.page = page;
+export class LoginPage extends BasePage {
+  constructor(page, actorLabel = null) {
+    super(page, actorLabel);
     this.emailInput = page.getByRole('textbox', { name: 'Email' });
     this.passwordInput = page.getByRole('textbox', { name: 'Password' });
     this.logInButton = page.getByRole('button', { name: 'Log in' });
@@ -273,16 +277,31 @@ export class LoginPage {
   }
 
   async login(email, password) {
-    await this.emailInput.fill(email);
-    await this.passwordInput.fill(password);
-    await this.logInButton.click();
+    await this.step(`Fill "Email" with "${email}"`, async () => {
+      await this.emailInput.fill(email);
+    });
+
+    await this.step(`Fill "Password" with "${password}"`, async () => {
+      await this.passwordInput.fill(password);
+    });
+
+    await this.step(`Click "Log in"`, async () => {
+      await this.logInButton.click();
+    });
   }
 
   async assertLoaded() {
-    await expect(this.pageAnchor).toBeVisible();
+    await this.step(`Assert login page is loaded`, async () => {
+      await expect(this.pageAnchor).toBeVisible();
+    });
   }
 }
 ```
+
+This is a hard rule, not a style preference — a new Page Object method
+that doesn't use `this.step()` should get a "Request changes" in review.
+See `REFERENCE.md` under `pages/BasePage.js` for the full API, including
+`actorLabel` (for multi-user tests).
 
 Prefer `getByRole` / `getByLabel` / `getByPlaceholder` locators over CSS
 selectors — they are more resistant to markup changes. If you're unsure
