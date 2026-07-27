@@ -219,6 +219,24 @@ test('TC-AUTH-002: Login with valid credentials returns JWT', async ({ page }) =
 });
 ```
 
+If a meaningful title pushes the line over 80 characters even after
+Prettier formats it (`npx prettier --write`), don't try to restructure
+the `test(...)` call to break it across lines — Prettier has a special
+formatter for `test`/`it`/`describe` calls and will just collapse it
+back to one line every time. Add `// eslint-disable-next-line max-len`
+directly above instead:
+
+```js
+// eslint-disable-next-line max-len
+test('TC-AUTH-009: Some genuinely long, meaningful title', async ({ page }) => {
+  ...
+});
+```
+
+Run Prettier first, though — the title's own line often already fits
+once Prettier collapses the call, and the disable comment just becomes
+noise (ESLint flags unused disable directives too).
+
 ### Code style inside a test body
 
 Group statements by kind and separate each group with a blank line:
