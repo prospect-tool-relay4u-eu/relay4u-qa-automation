@@ -7,6 +7,31 @@ written to be copy-pasted straight into the matching PR description.
 
 ---
 
+## 2026-07-22 — TC-AUTH-009 bug confirmed fixed, test.fail() removed
+
+The generic "An error occurred" bug tracked by `TC-AUTH-009` is
+actually fixed on staging — but not exactly as expected. The frontend
+now shows the real reason (`span.form-error`), not the old
+`div.alert-error` banner, and the wording changed slightly too
+("must contain an uppercase letter, a digit and a special character."
+vs. our original assumed text). Re-ran the test after updating both,
+confirmed it passes for real (not just "unexpectedly passed" against a
+stale locator) — `test.fail()` removed, this is now a permanent
+regression test.
+
+**Changed:**
+
+- `pages/auth/SignUpPage.js` — `errorMessage` locator: `.alert-error` →
+  `.form-error`.
+- `helpers/constants/authMessages.js` — `PASSWORD_REQUIREMENTS` updated
+  to match the actual current wording.
+- `tests/auth/tc-auth-009-registration-invalid-password.spec.js` —
+  `test.fail()` removed; title renamed from "shows generic error" to
+  "shows specific validation reason" (now testing the opposite of what
+  it originally documented).
+
+---
+
 ## 2026-07-22 — TC-AUTH-009 documents a known registration bug
 
 New scenario: registering with a password missing one required
