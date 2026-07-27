@@ -15,7 +15,7 @@ export class SignUpPage extends BasePage {
     });
     this.signUpButton = page.getByRole('button', { name: 'Sign up' });
     this.pageAnchor = page.getByRole('link', { name: 'Relay4U Relay4U' });
-    this.errorMessage = page.locator('.alert-error');
+    this.errorMessage = page.locator('.form-error');
   }
 
   async signUp(fullName, email, password) {
