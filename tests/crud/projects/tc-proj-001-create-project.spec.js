@@ -16,5 +16,11 @@ test('TC-PROJ-001: Create project with valid name@crud', async ({
   await projectsPage.fillProjectNameField(projectName);
   await projectsPage.clickFormCreateNewProject();
 
-  await projectsPage.assertProjectCreated();
+  await projectsPage.assertProjectCreated(projectName);
+
+  // Deleting the project to keep the test environment clean.
+  // To be deleted once such test is created.
+  await projectsPage.page.waitForTimeout(2000);
+  await projectsPage.goto();
+  await projectsPage.deleteProject(projectName);
 });
