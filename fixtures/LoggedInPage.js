@@ -1,19 +1,21 @@
 import { test as base, expect } from '@playwright/test';
+import { LoginPage } from '../pages/auth/LoginPage';
+import { ProjectsPage } from '../pages/ProjectsPage';
 
 export const test = base.extend({
   loggedInPage: async ({ browser }, use) => {
     const page = await browser.newPage();
+    const loginPage = new LoginPage(page);
+    const projectsPage = new ProjectsPage(page);
 
-    await page.goto('/login');
+    await loginPage.goto();
 
     const email = process.env.TEST_USER_EMAIL;
     const password = process.env.TEST_USER_PASSWORD;
 
-    await page.getByRole('textbox', { name: 'Email' }).fill(email);
-    await page.getByRole('textbox', { name: 'Password' }).fill(password);
-    await page.getByRole('button', { name: 'Log in' }).click();
+    await loginPage.login(email, password);
 
-    await expect(page).toHaveURL(/\/projects/);
+    await projectsPage.assertLoaded();
 
     await use(page);
 

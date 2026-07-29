@@ -33,42 +33,77 @@ export class ProjectsPage extends BasePage {
   }
 
   async clickCreateProject() {
-    await this.page.getByRole('button', { name: '+ New project' }).click();
+    await this.step('Click "New project" button', async () => {
+      await this.page.getByRole('button', { name: '+ New project' }).click();
+    });
   }
 
   async assertCreateProjectFormVisible() {
-    const projectModal = this.page.locator('div', {
-      has: this.page.getByRole('heading', { name: 'New project' }),
-    });
+    await this.step(
+      'Assert "New project" form is visible and "Create" button is disabled',
+      async () => {
+        const projectModal = this.page.locator('div', {
+          has: this.page.getByRole('heading', { name: 'New project' }),
+        });
 
-    await expect(
-      projectModal.getByRole('heading', { name: 'New project' }),
-    ).toBeVisible();
+        await expect(
+          projectModal.getByRole('heading', { name: 'New project' }),
+        ).toBeVisible();
 
-    await expect(
-      projectModal.getByRole('textbox', { name: 'Project name' }),
-    ).toBeVisible();
+        await expect(
+          projectModal.getByRole('textbox', { name: 'Project name' }),
+        ).toBeVisible();
 
-    await expect(
-      projectModal.getByRole('button', { name: 'Cancel' }),
-    ).toBeVisible();
+        await expect(
+          projectModal.getByRole('button', { name: 'Cancel' }),
+        ).toBeVisible();
 
-    await expect(
-      projectModal.getByRole('button', { name: 'Create project' }),
-    ).toBeDisabled();
+        await expect(
+          projectModal.getByRole('button', { name: 'Create project' }),
+        ).toBeDisabled();
+      },
+    );
   }
 
   async fillProjectNameField(projectName) {
-    await this.page
-      .getByRole('textbox', { name: 'Project name' })
-      .fill(projectName);
+    await this.step(
+      `Fill project name field with "${projectName}"`,
+      async () => {
+        await this.page
+          .getByRole('textbox', { name: 'Project name' })
+          .fill(projectName);
+      },
+    );
   }
 
   async clickFormCreateNewProject() {
-    await this.page.getByRole('button', { name: 'Create project' }).click();
+    await this.step('Click "Create project" button on form', async () => {
+      await this.page.getByRole('button', { name: 'Create project' }).click();
+    });
   }
 
-  async assertProjectCreated() {
-    await expect(this.page.locator('div.table-page')).toBeVisible();
+  async assertProjectCreated(projectName) {
+    await this.step(
+      `Assert project "${projectName}" is successfully created`,
+      async () => {
+        await expect(this.page.getByText(`${projectName}`)).toBeVisible();
+      },
+    );
+  }
+
+  async deleteProject(projectName) {
+    await this.step(`Delete project "${projectName}"`, async () => {
+      const projectCard = this.page
+        .locator('div.project-card')
+        .filter({ hasText: projectName });
+
+      await projectCard
+        .getByRole('button', { name: 'Delete project', exact: true })
+        .click();
+
+      await projectCard
+        .getByRole('button', { name: 'Yes, delete', exact: true })
+        .click();
+    });
   }
 }

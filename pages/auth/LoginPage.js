@@ -18,6 +18,12 @@ export class LoginPage extends BasePage {
     });
   }
 
+  async goto() {
+    await this.step(`Go to login page`, async () => {
+      await this.page.goto('/login');
+    });
+  }
+
   async login(email, password) {
     await this.step(`Fill "Email" with "${email}"`, async () => {
       await this.emailInput.fill(email);
