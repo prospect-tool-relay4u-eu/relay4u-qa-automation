@@ -36,6 +36,13 @@ export class LoginPage extends BasePage {
     await this.step(`Click "Log in"`, async () => {
       await this.logInButton.click();
     });
+
+    await this.step(`Wait for login API response`, async () => {
+      await this.page.waitForResponse(
+        resp => resp.url().includes('/api/auth/login') && resp.status() === 200,
+        { timeout: 30000 },
+      );
+    });
   }
 
   async assertLoaded() {

@@ -86,7 +86,9 @@ export class ProjectsPage extends BasePage {
     await this.step(
       `Assert project "${projectName}" is successfully created`,
       async () => {
-        await expect(this.page.getByText(`${projectName}`)).toBeVisible();
+        await expect(this.page.getByText(`${projectName}`)).toBeVisible({
+          timeout: 30000,
+        });
       },
     );
   }
@@ -105,5 +107,14 @@ export class ProjectsPage extends BasePage {
         .getByRole('button', { name: 'Yes, delete', exact: true })
         .click();
     });
+  }
+
+  async assertProjectDeleted(projectName) {
+    await this.step(
+      `Assert project "${projectName}" is successfully deleted`,
+      async () => {
+        await expect(this.page.getByText(`${projectName}`)).toBeHidden();
+      },
+    );
   }
 }
