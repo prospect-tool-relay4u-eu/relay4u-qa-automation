@@ -90,10 +90,16 @@ from your local `main`:
 ```
 git checkout main
 git pull
+npm ci
 git checkout -b <your-name>/<test-id>-<short-title>
-```
 
----
+```
+ `npm ci` (not `npm install`) does a clean install strictly matching
+   `package-lock.json` — it removes `node_modules` first, so you end up
+   with exactly the same dependency versions as everyone else, not
+   whatever you happened to have installed last week. Only create your
+   new branch and start writing once this is done.
+
 
 ## ⚠️ HOW TO RUN TESTS — READ THIS BEFORE YOU RUN ANYTHING
 
@@ -128,6 +134,7 @@ it only runs a test once you click it, including `@email-quota` tests.
 
    `npm install` also registers the Husky pre-commit hook automatically
    (via the `prepare` script).
+
 
 2. Create your local `.env` file from the template:
 
