@@ -9,6 +9,16 @@ export class ProjectsPage extends BasePage {
       exact: true,
     });
     this.userNameDisplay = page.locator('.user-email');
+    this.newProjectButton = page.getByRole('button', { name: '+ New project' });
+    this.projectNameInput = page.getByRole('textbox', { name: 'Project name' });
+    this.createProjectButton = page.getByRole('button', {
+      name: 'Create project',
+    });
+    this.newProjectModal = page.getByRole('heading', { name: 'New project' });
+    this.cancelCreatingProjectButton = page.getByRole('button', {
+      name: 'Cancel',
+    });
+    this.logOutButton = this.page.getByRole('button', { name: 'Log out' });
   }
 
   async goto() {
@@ -32,9 +42,9 @@ export class ProjectsPage extends BasePage {
     );
   }
 
-  async clickCreateProject() {
+  async clickNewProjectButton() {
     await this.step('Click "New project" button', async () => {
-      await this.page.getByRole('button', { name: '+ New project' }).click();
+      await this.newProjectButton.click();
     });
   }
 
@@ -42,25 +52,13 @@ export class ProjectsPage extends BasePage {
     await this.step(
       'Assert "New project" form is visible and "Create" button is disabled',
       async () => {
-        const projectModal = this.page.locator('div', {
-          has: this.page.getByRole('heading', { name: 'New project' }),
-        });
+        await expect(this.newProjectModal).toBeVisible();
 
-        await expect(
-          projectModal.getByRole('heading', { name: 'New project' }),
-        ).toBeVisible();
+        await expect(this.projectNameInput).toBeVisible();
 
-        await expect(
-          projectModal.getByRole('textbox', { name: 'Project name' }),
-        ).toBeVisible();
+        await expect(this.cancelCreatingProjectButton).toBeVisible();
 
-        await expect(
-          projectModal.getByRole('button', { name: 'Cancel' }),
-        ).toBeVisible();
-
-        await expect(
-          projectModal.getByRole('button', { name: 'Create project' }),
-        ).toBeDisabled();
+        await expect(this.createProjectButton).toBeDisabled();
       },
     );
   }
@@ -69,16 +67,14 @@ export class ProjectsPage extends BasePage {
     await this.step(
       `Fill project name field with "${projectName}"`,
       async () => {
-        await this.page
-          .getByRole('textbox', { name: 'Project name' })
-          .fill(projectName);
+        await this.projectNameInput.fill(projectName);
       },
     );
   }
 
-  async clickFormCreateNewProject() {
+  async clickCreateProjectButton() {
     await this.step('Click "Create project" button on form', async () => {
-      await this.page.getByRole('button', { name: 'Create project' }).click();
+      await this.createProjectButton.click();
     });
   }
 
@@ -86,9 +82,7 @@ export class ProjectsPage extends BasePage {
     await this.step(
       `Assert project "${projectName}" is successfully created`,
       async () => {
-        await expect(this.page.getByText(`${projectName}`)).toBeVisible({
-          timeout: 30000,
-        });
+        await expect(this.page.getByText(`${projectName}`)).toBeVisible();
       },
     );
   }
@@ -116,5 +110,11 @@ export class ProjectsPage extends BasePage {
         await expect(this.page.getByText(`${projectName}`)).toBeHidden();
       },
     );
+  }
+
+  async clickLogOut() {
+    return this.step('Log out', async () => {
+      await this.logOutButton.click();
+    });
   }
 }

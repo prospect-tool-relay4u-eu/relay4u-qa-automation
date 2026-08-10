@@ -7,6 +7,39 @@ written to be copy-pasted straight into the matching PR description.
 
 ---
 
+## 2026-08-10 — TC-SMOKE-001 end-to-end, plus the project/table framework pieces it needed
+
+`tests/e2e/tc-smoke-001.spec.js` covers the full happy-path smoke
+scenario: log in → create a project → open it → add a record → fill
+and verify its fields → delete the record → delete the project → log
+out.
+
+**Known flake:** `assertProjectCreated` occasionally times out even
+at 30s, when the create-project API response lags. Not fixed yet —
+flagging so a failure here isn't mistaken for a regression.
+
+**New:**
+
+- `tests/e2e/tc-smoke-001.spec.js` — the scenario above.
+- `fixtures/authFixtures.js` — new `authFixtures`, logs in
+  automatically so individual tests don't need to repeat login steps.
+- `pages/ProjectDetailsPage.js` — new. Steps for a page with an
+  opened, editable project: `waitForPage`, `waitForProject`,
+  `assertLoaded`, `clickAddRecord`, `assertRecordFieldAdded`,
+  `clickRecordField`, `fillRecordField`, `assertRecordFieldProperValue`,
+  `clickRecordDeleteButton`, `assertRecordDeleted`,
+  `assertColumnsOrder`, `clickProjectsNavLink`.
+- `pages/ProjectsPage.js` — added `assertCreateProjectFormVisible`,
+  `clickFormCreateNewProject`, `fillProjectNameField`,
+  `clickCreateProject`, `assertProjectCreated`, `deleteProject`,
+  `assertProjectDeleted`, `clickLogOut`.
+- `pages/LoginPage.js` — `login` step now waits for the login API
+  response before proceeding, to avoid a fake failure when the API is
+  slow to respond.
+- See `REFERENCE.md` for how to use any of the above.
+
+---
+
 ## 2026-07-22 — TC-AUTH-009 documents a known registration bug
 
 New scenario: registering with a password missing one required

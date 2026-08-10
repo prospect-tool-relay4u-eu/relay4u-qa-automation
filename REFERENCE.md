@@ -90,7 +90,8 @@ Get `code` from `helpers/email/getVerificationCode.js`.
 `/login`. Also where the "Account verified!" success message shows up
 right after email verification.
 
-- `login(email, password)`
+- `login(email, password)` — waits for the login API response before
+  proceeding, to avoid a fake failure when the API is slow to respond
 - `assertLoaded()`
 - `assertInvalidCredentialsError()` — asserts the generic wrong-credentials
   message
@@ -109,103 +110,72 @@ right after email verification.
   heading)
 - `assertUserNameDisplayed(fullName)` — asserts the logged-in user's name
   is shown
+- `clickFormCreateNewProject()` — opens the "New project" form
+- `assertCreateProjectFormVisible()` — asserts the form is visible and
+  "Create" button is disabled
+- `fillProjectNameField(name)`
+- `clickCreateProject()`
+- `assertProjectCreated(name)` — can occasionally time out (even at 30s)
+  when the create-project API response lags; not a real failure if seen
+  intermittently
+- `deleteProject(name)`
+
+<details>
+<summary><code>pages/ProjectDetailsPage.js</code></summary>
+
+`/projects/:id`. An opened, editable project — the record table plus
+field management.
+
+**Row/column indexing:** `rowIndex` is the visible row number shown in
+the `#` column (matched against `td.td-num` text), not an array index.
+`columnIndex` is zero-based across all `<td>` in that row, left to right
+(`0` = `#`, `1` = first data column, etc.)
+
+- `waitForPage()` — waits for the URL to match `/projects/:id`
+- `waitForProject(projectId)` — waits for the URL to match a specific
+  project id
+- `assertLoaded()` — asserts page is loaded
+- `clickAddRecord()`
+- `assertRecordFieldAdded(rowIndex)` — asserts a row with that visible
+  number has been added
+- `clickRecordField(rowIndex, columnIndex)` — clicks the cell, then
+  presses `Tab` to commit the value (the app saves on blur — skipping
+  the `Tab` can leave the value unsaved)
+- `fillRecordField(rowIndex, columnIndex, value)` — clicks the cell,
+  fills its textbox, then presses `Tab` to commit the value (the app
+  saves on blur — skipping the `Tab` can leave the value unsaved)
+- `assertRecordFieldProperValue(rowIndex, columnIndex, expectedValue)`
+- `clickRecordDeleteButton(rowIndex)` — deletes the entire record row
+- `assertRecordDeleted(rowIndex)` — asserts the row no longer exists
+- `assertColumnsOrder(...columnNames)` — asserts column headers match
+  names and order, left to right (`0` = `#`)
+- `clickProjectsNavLink()` — clicks 'Projects' navigation button
+
+**Internal:** `getRow(rowIndex)` / `getCell(rowIndex, columnIndex)` build
+the locators above — not meant to be called directly from tests.
 
 </details>
 
-## Helpers
+---
+
+## Fixtures
 
 <details>
-<summary><code>helpers/testStep.js</code></summary>
+<summary><code>fixtures/authFixtures.js</code></summary>
 
-`testStep(title, stepToRun, actorLabel = null)` — thin wrapper around
-Playwright's `test.step()`. Used internally by `BasePage.step()`; you
-normally call `this.step(...)` from inside a Page Object rather than this
-directly.
-
-Also re-exports `expect` from `@playwright/test`, so Page Objects can
-`import { expect } from '../helpers/testStep'` instead of
-`@playwright/test` directly.
-
-</details>
-
-<details>
-<summary><code>helpers/email/getVerificationCode.js</code></summary>
-
-Talks to testmail.app to receive a real verification email during tests.
-
-- `createTestEmail()` → `{ email, tag }`. `email` is a unique inbox
-  (`{namespace}.{uuid}@inbox.testmail.app`); use it wherever the test
-  needs an email address. Keep `tag` around.
-- `getVerificationCode(tag)` — waits for the email tagged `tag` to arrive
-  (via testmail.app's `livequery`) and returns the 6-digit code as a
-  string.
-
-**Costs one real email per `createTestEmail()` call** — shared 100/month
-quota across the team (namespace `2t1jc`). Don't call this in a loop or in
-every test; only where the test specifically needs to prove the email flow
-works.
-
-Requires `TESTMAIL_API_KEY`, `TESTMAIL_API_URL`, `TESTMAIL_NAMESPACE` in
-`.env`.
-
-</details>
-
-## Constants
-
-<details>
-<summary><code>helpers/constants/authMessages.js</code></summary>
-
-`AUTH_MESSAGES` — exact strings the app shows for auth-related states
-(verified, invalid credentials, password requirements, generic sign-up
-error). Import this instead of hardcoding the string in a Page Object, and
-match locators with `{ exact: true }` against it.
-
-Each domain gets its own file (`fieldMessages.js`, `projectMessages.js`,
-etc.) instead of one shared file, to avoid merge conflicts between people
-working on different areas.
-
-</details>
-
-## Test Data
-
-<details>
-<summary><code>helpers/testData/generateNewUser.js</code></summary>
-
-`generateNewUser()` — returns `{ fullName, email, password }` via Faker.
-Password always ends in `Aa1!` to guarantee upper/lower/digit/special
-regardless of what Faker generates randomly, matching the backend's
-complexity requirement.
-
-The `email` field is a throwaway Faker address — if the test needs to
-actually receive mail (e.g. registration+verification), override it with
-`createTestEmail()`'s `email` before use:
+Extends Playwright's base `test` with a `loggedInPage` fixture — logs in
+automatically before the test body runs, so tests don't need to repeat
+login steps themselves.
 
 ```js
-const { email, tag } = createTestEmail();
-const user = { ...generateNewUser(), email };
+import { test } from '../fixtures/authFixtures';
+
+test('some scenario', async ({ loggedInPage }) => {});
 ```
 
 </details>
 
-<details>
-<summary><code>helpers/testData/existingUser.js</code></summary>
-
-A real, already-verified staging account (`TEST_USER_EMAIL` /
-`TEST_USER_PASSWORD` from `.env`). Use this whenever a test just needs "a
-logged-in user" and doesn't care how they got there — cheaper than
-registering fresh every time.
-
-Don't use it for tests that need a pristine/empty account (e.g. "no
-projects yet" empty-state checks) — this account accumulates data from
-every test that uses it.
-
-</details>
-
-## Fixtures
-
-Nothing here yet — see `DEVLOG.md` for the planned reused-auth-state
-fixture (log in once, reuse the JWT across tests instead of registering
-fresh every time).
+---
 
 ## Builders
 
