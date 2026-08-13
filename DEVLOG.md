@@ -9,9 +9,7 @@ written to be copy-pasted straight into the matching PR description.
 
 ## 2026-08-13 — TC-SMOKE-001 stabilized: Page Object cleanup, `openAndAssert()`, folder reorg
 
-Reworked Mateusz's original `TC-SMOKE-001` branch end-to-end after
-several review cycles didn't land — went in and fixed the code
-directly instead of another comment pass.
+Reworked Mateusz's original `TC-SMOKE-001` branch end-to-end
 
 `ProjectsPage` and `ProjectDetailsPage` moved into `pages/projects/`
 (domain folders, matching `pages/auth/`). Every Page Object method now

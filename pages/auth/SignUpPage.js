@@ -18,6 +18,17 @@ export class SignUpPage extends BasePage {
     this.errorMessage = page.locator('.form-error');
   }
 
+  async openAndAssert() {
+    await this.goto();
+    await this.assertLoaded();
+  }
+
+  async goto() {
+    await this.step(`Go to sign up page`, async () => {
+      await this.page.goto('/register');
+    });
+  }
+
   async signUp(fullName, email, password) {
     await this.step(`Fill "Full name" with "${fullName}"`, async () => {
       await this.fullNameInput.fill(fullName);

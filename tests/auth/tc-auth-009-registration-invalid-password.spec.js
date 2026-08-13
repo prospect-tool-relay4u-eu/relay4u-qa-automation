@@ -12,7 +12,7 @@ test('TC-AUTH-009: Invalid password shows specific validation reason', async ({
   const homePage = new HomePage(page, user.fullName);
   const signUpPage = new SignUpPage(page, user.fullName);
 
-  await homePage.goto();
+  await homePage.openAndAssert();
   await homePage.clickSignUp();
 
   await signUpPage.assertLoaded();

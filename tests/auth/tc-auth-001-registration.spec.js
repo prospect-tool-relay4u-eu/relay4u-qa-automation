@@ -3,7 +3,7 @@ import { HomePage } from '../../pages/HomePage';
 import { SignUpPage } from '../../pages/auth/SignUpPage';
 import { VerifyEmailPage } from '../../pages/auth/VerifyEmailPage';
 import { LoginPage } from '../../pages/auth/LoginPage';
-import { ProjectsPage } from '../../pages/ProjectsPage';
+import { ProjectsPage } from '../../pages/projects/ProjectsPage';
 import { generateNewUser } from '../../helpers/testData/generateNewUser';
 import {
   createTestEmail,
@@ -19,7 +19,7 @@ test('TC-AUTH-001 @email-quota', async ({ page }) => {
   const loginPage = new LoginPage(page, user.fullName);
   const projectsPage = new ProjectsPage(page, user.fullName);
 
-  await homePage.goto();
+  await homePage.openAndAssert();
   await homePage.clickSignUp();
 
   await signUpPage.assertLoaded();

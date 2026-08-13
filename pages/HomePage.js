@@ -13,6 +13,11 @@ export class HomePage extends BasePage {
     });
   }
 
+  async openAndAssert() {
+    await this.goto();
+    await this.assertLoaded();
+  }
+
   async goto() {
     await this.step(`Open the home page`, async () => {
       await this.page.goto('/');

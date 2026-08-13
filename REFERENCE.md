@@ -42,6 +42,14 @@ export class SomePage extends BasePage {
 }
 ```
 
+Also declares `openAndAssert()`, which throws by default
+(`openAndAssert() is not implemented for SomePage`). Every Page Object
+that has a real, directly-navigable entry point overrides it with its
+own `goto()` + `assertLoaded()` (or `waitForPage()` + `assertLoaded()`
+for pages reached via a dynamic URL, like `ProjectDetailsPage`) — one
+call that lands on the page and confirms it actually loaded, instead of
+callers doing both steps by hand every time.
+
 </details>
 
 <details>
@@ -49,6 +57,7 @@ export class SomePage extends BasePage {
 
 The `/` landing page — entry point for both registration and login.
 
+- `openAndAssert()` — `goto()` + `assertLoaded()`
 - `goto()` — navigates to `/`
 - `clickSignUp()` — clicks "Sign up for free"
 - `clickLogIn()` — clicks "I already have an account"
@@ -61,6 +70,8 @@ The `/` landing page — entry point for both registration and login.
 
 `/register`. Fills out and submits the registration form.
 
+- `openAndAssert()` — `goto()` + `assertLoaded()`
+- `goto()` — navigates to `/register`
 - `signUp(fullName, email, password)` — fills all four fields and clicks
   "Sign up"
 - `assertLoaded()`
@@ -90,6 +101,8 @@ Get `code` from `helpers/email/getVerificationCode.js`.
 `/login`. Also where the "Account verified!" success message shows up
 right after email verification.
 
+- `openAndAssert()` — `goto()` + `assertLoaded()`
+- `goto()` — navigates to `/login`
 - `login(email, password)` — waits for the login API response before
   proceeding, to avoid a fake failure when the API is slow to respond
 - `assertLoaded()`
@@ -101,27 +114,77 @@ right after email verification.
 </details>
 
 <details>
-<summary><code>pages/ProjectsPage.js</code></summary>
+<summary><code>pages/projects/ProjectsPage.js</code></summary>
 
-`/projects`. Lands here after a successful login.
+`/projects`. Lands here after a successful login — no `goto()` needed
+right after `login()`, the app redirects here on its own; just call
+`assertLoaded()` (or use `openAndAssert()` when arriving from anywhere
+else, e.g. test cleanup in `afterEach`).
 
+- `openAndAssert()` — `goto()` + `assertLoaded()`
 - `assertLoaded()` — asserts the "Projects" heading (`exact: true` —
   without it, this also matches the "No projects yet" empty-state
   heading)
 - `assertUserNameDisplayed(fullName)` — asserts the logged-in user's name
   is shown
-- `clickFormCreateNewProject()` — opens the "New project" form
+- `clickNewProjectButton()` — opens the "New project" form
 - `assertCreateProjectFormVisible()` — asserts the form is visible and
   "Create" button is disabled
 - `fillProjectNameField(name)`
-- `clickCreateProject()`
-- `assertProjectCreated(name)` — can occasionally time out (even at 30s)
-  when the create-project API response lags; not a real failure if seen
-  intermittently
+- `clickCreateProjectButton()` — submits the form
+- `assertProjectCreated(name)`
 - `deleteProject(name)`
+- `assertProjectDeleted(name)`
+- `clickLogOut()`
+
+**Internal:** `getProjectCard(projectName)` returns the Locator for one
+project's card, filtered by its visible name — reused by
+`assertProjectCreated`/`assertProjectDeleted`/`deleteProject` instead of
+each rebuilding the same filter separately.
+
+`getProjectCardActions(projectName)` builds on `getProjectCard` and
+returns an object with that card's action buttons, instead of a single
+Locator:
+
+```js
+getProjectCardActions(projectName) {
+  const card = this.getProjectCard(projectName);
+
+  return {
+    deleteButton: card.getByRole('button', { name: 'Delete project', exact: true }),
+    confirmDeleteButton: card.getByRole('button', { name: 'Yes, delete', exact: true }),
+  };
+}
+```
+
+`deleteProject()` then does:
+
+```js
+const { deleteButton, confirmDeleteButton } =
+  this.getProjectCardActions(projectName);
+
+await deleteButton.click();
+await confirmDeleteButton.click();
+```
+
+What `const { deleteButton, confirmDeleteButton } = ...` means: this is
+called **object destructuring**. `getProjectCardActions()` returns one
+object with two properties on it. Instead of writing:
+
+```js
+const actions = this.getProjectCardActions(projectName);
+const deleteButton = actions.deleteButton;
+const confirmDeleteButton = actions.confirmDeleteButton;
+```
+
+destructuring does the exact same thing in one line — it pulls each
+named property straight out into its own variable, matched by name.
+Nothing more advanced is happening here than that.
+
+</details>
 
 <details>
-<summary><code>pages/ProjectDetailsPage.js</code></summary>
+<summary><code>pages/projects/ProjectDetailsPage.js</code></summary>
 
 `/projects/:id`. An opened, editable project — the record table plus
 field management.
@@ -131,10 +194,20 @@ the `#` column (matched against `td.td-num` text), not an array index.
 `columnIndex` is zero-based across all `<td>` in that row, left to right
 (`0` = `#`, `1` = first data column, etc.)
 
+- `openAndAssert()` — `waitForPage()` + `assertLoaded()` (no `goto()`
+  here — the URL is dynamic per project id, so there's nothing to
+  navigate to directly; you land here by clicking through)
 - `waitForPage()` — waits for the URL to match `/projects/:id`
 - `waitForProject(projectId)` — waits for the URL to match a specific
   project id
 - `assertLoaded()` — asserts page is loaded
+- `assertNewProjectReady(projectName)` — the check right after creating
+  a project: the `#` column header is visible (table has rendered), the
+  breadcrumb (`.breadcrumb-current`) shows `projectName`, and the
+  empty-state row (`No records — click "+ Add record" to get started`)
+  is visible. Anchoring on the `#` header first avoids a race where the
+  breadcrumb/empty-state text is checked before the table has actually
+  rendered.
 - `clickAddRecord()`
 - `assertRecordFieldAdded(rowIndex)` — asserts a row with that visible
   number has been added
@@ -163,14 +236,24 @@ the locators above — not meant to be called directly from tests.
 <details>
 <summary><code>fixtures/authFixtures.js</code></summary>
 
-Extends Playwright's base `test` with a `loggedInPage` fixture — logs in
-automatically before the test body runs, so tests don't need to repeat
-login steps themselves.
+Extends Playwright's base `test` with a `loginPage` fixture — just
+constructs a `LoginPage` instance and hands it to the test, nothing
+more. It does **not** log in for you: the fixture is deliberately
+"dumb" (no side effects), so login stays a plain call in
+`test.beforeEach()` inside each spec file instead of being hidden
+inside fixture setup. That keeps things extensible — a spec that needs
+two logged-in actors, or a different user per test, isn't fighting a
+fixture that already assumes one fixed login flow.
 
 ```js
 import { test } from '../fixtures/authFixtures';
 
-test('some scenario', async ({ loggedInPage }) => {});
+test.beforeEach(async ({ loginPage }) => {
+  await loginPage.goto();
+  await loginPage.login(existingUser.email, existingUser.password);
+});
+
+test('some scenario', async ({ page }) => {});
 ```
 
 </details>

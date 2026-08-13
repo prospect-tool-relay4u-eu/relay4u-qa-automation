@@ -18,6 +18,11 @@ export class LoginPage extends BasePage {
     });
   }
 
+  async openAndAssert() {
+    await this.goto();
+    await this.assertLoaded();
+  }
+
   async goto() {
     await this.step(`Go to login page`, async () => {
       await this.page.goto('/login');

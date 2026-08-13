@@ -1,29 +1,22 @@
-import { expect } from '@playwright/test';
 import { test } from '../../fixtures/authFixtures.js';
-import { ProjectsPage } from '../../pages/ProjectsPage.js';
-import { ProjectDetailsPage } from '../../pages/ProjectDetailsPage.js';
+import { ProjectsPage } from '../../pages/projects/ProjectsPage.js';
+import { ProjectDetailsPage } from '../../pages/projects/ProjectDetailsPage.js';
 import { HomePage } from '../../pages/HomePage.js';
 import { faker } from '@faker-js/faker';
 import { existingUser } from '../../helpers/testData/existingUser';
 
-let projectName = 'Smoke TestProjectName ' + faker.word.noun();
+let projectName;
 
 test.beforeEach(async ({ loginPage }) => {
-  await loginPage.goto();
+  await loginPage.openAndAssert();
   await loginPage.login(existingUser.email, existingUser.password);
 });
 
 test.afterEach(async ({ page }) => {
-  const projectDetailsPage = new ProjectDetailsPage(page);
   const projectsPage = new ProjectsPage(page);
   const homePage = new HomePage(page);
 
-  await page.waitForTimeout(3000);
-
-  await projectsPage.goto();
-
-  await projectsPage.assertLoaded();
-
+  await projectsPage.openAndAssert();
   await projectsPage.deleteProject(projectName);
 
   await projectsPage.assertProjectDeleted(projectName);
@@ -33,14 +26,15 @@ test.afterEach(async ({ page }) => {
   await homePage.assertLoaded();
 });
 
-test('TC-SMOKE-001 - Standard user flow with login/logout @smoke', async ({
+test('TC-SMOKE-001 - Standard user flow with login/logout', async ({
   page,
 }) => {
+  projectName = 'Smoke TestProjectName ' + faker.word.noun();
+
   const projectsPage = new ProjectsPage(page);
   const projectDetailsPage = new ProjectDetailsPage(page);
-  const homePage = new HomePage(page);
 
-  await projectsPage.goto();
+  await projectsPage.assertLoaded();
 
   await projectsPage.clickNewProjectButton();
 
@@ -49,8 +43,7 @@ test('TC-SMOKE-001 - Standard user flow with login/logout @smoke', async ({
   await projectsPage.fillProjectNameField(projectName);
   await projectsPage.clickCreateProjectButton();
 
-  await projectsPage.assertProjectCreated(projectName);
-
+  await projectDetailsPage.assertNewProjectReady(projectName);
   await projectDetailsPage.assertColumnsOrder(
     '#',
     'Full Name',

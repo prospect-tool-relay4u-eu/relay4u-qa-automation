@@ -4,6 +4,7 @@ import { LoginPage } from '../pages/auth/LoginPage';
 export const test = base.extend({
   loginPage: async ({ page }, use) => {
     const loginPage = new LoginPage(page);
+
     await use(loginPage);
   },
 });
