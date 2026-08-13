@@ -100,8 +100,32 @@ git checkout -b <your-name>/<test-id>-<short-title>
    whatever you happened to have installed last week. Only create your
    new branch and start writing once this is done.
 
+### Keep a long-running branch in sync with `main`
 
-## ⚠️ HOW TO RUN TESTS — READ THIS BEFORE YOU RUN ANYTHING
+If your branch stays open for more than a day or two, other people's
+work keeps landing on `main` without you on it — don't wait until you
+open the PR to find out how far behind you are. Pull `main` into your
+branch at the start of every session you come back to it:
+
+```
+git fetch origin
+git merge origin/main
+```
+
+If Git reports conflicts, resolve them before continuing — they're
+almost always easier to fix a few files at a time, right when they
+happen, than all at once weeks later in a giant PR. Do this every time
+you sit down to work on the branch again, not just once at the start.
+
+If you're not sure whether a specific file you're about to edit has
+changed on `main` since you branched off, check before assuming your
+copy is current:
+
+```
+git log main -- path/to/file.js
+```
+
+
 
 ```
 npm run test:no-quota
