@@ -168,7 +168,15 @@ await confirmDeleteButton.click();
 ```
 
 What `const { deleteButton, confirmDeleteButton } = ...` means: this is
-called **object destructuring**. `getProjectCardActions()` returns one
+called **object destructuring**. The general idea, in plain terms:
+`this.getProjectCardActions(projectName)` runs and hands back a
+reference to one object sitting in memory — think of it as a box with
+labeled compartments (`deleteButton`, `confirmDeleteButton`, could be
+any number of them). Destructuring reaches into that box by label and
+pulls specific compartments out into their own standalone variables,
+in one step, instead of you doing it by hand one property at a time.
+
+`getProjectCardActions()` returns exactly that kind of object — one
 object with two properties on it. Instead of writing:
 
 ```js
@@ -178,8 +186,11 @@ const confirmDeleteButton = actions.confirmDeleteButton;
 ```
 
 destructuring does the exact same thing in one line — it pulls each
-named property straight out into its own variable, matched by name.
-Nothing more advanced is happening here than that.
+named property straight out into its own variable, matched by name
+(the names on the left, `deleteButton`/`confirmDeleteButton`, have to
+match the property names on the object being destructured — that's
+how it knows what to grab). Nothing more advanced is happening here
+than that.
 
 </details>
 
@@ -212,11 +223,11 @@ the `#` column (matched against `td.td-num` text), not an array index.
 - `assertRecordFieldAdded(rowIndex)` — asserts a row with that visible
   number has been added
 - `clickRecordField(rowIndex, columnIndex)` — clicks the cell, then
-  presses `Tab` to commit the value (the app saves on blur — skipping
-  the `Tab` can leave the value unsaved)
+  presses `Tab` to commit the value and waits for the save request to
+  complete (see `waitForRecordSaved()` below)
 - `fillRecordField(rowIndex, columnIndex, value)` — clicks the cell,
-  fills its textbox, then presses `Tab` to commit the value (the app
-  saves on blur — skipping the `Tab` can leave the value unsaved)
+  fills its textbox, then presses `Tab` to commit the value and waits
+  for the save request to complete (see `waitForRecordSaved()` below)
 - `assertRecordFieldProperValue(rowIndex, columnIndex, expectedValue)`
 - `clickRecordDeleteButton(rowIndex)` — deletes the entire record row
 - `assertRecordDeleted(rowIndex)` — asserts the row no longer exists
@@ -226,6 +237,47 @@ the `#` column (matched against `td.td-num` text), not an array index.
 
 **Internal:** `getRow(rowIndex)` / `getCell(rowIndex, columnIndex)` build
 the locators above — not meant to be called directly from tests.
+
+**Internal:** `waitForRecordSaved()` waits for the record's `PUT
+/api/records/:id` response. The app saves the whole row's `values`
+object on every field blur, not one field at a time — so editing two
+fields back to back without waiting can send two overlapping `PUT`
+requests, and if they land out of order, whichever one arrives last
+wins and can silently wipe out the field the other one had just
+saved. `clickRecordField`/`fillRecordField` both press `Tab` (which
+triggers the save) and `waitForRecordSaved()` (armed *before* `Tab`,
+so a fast response can't resolve before Playwright starts listening
+for it) together, so the next action in the test never starts before
+the current field's save has actually landed on the backend.
+
+What `for (const [index, name] of columnNames.entries())` means,
+inside `assertColumnsOrder`:
+
+```js
+for (const [index, name] of columnNames.entries()) {
+  const header = this.columnHeaders.nth(index);
+  // ...
+}
+```
+
+`columnNames` is an array (that's what `...columnNames` collects —
+every argument the caller passed in, e.g. `'#'`, `'Full Name'`,
+`'Company'`, ...). A plain `for (const name of columnNames)` would
+hand you each value one at a time, but not its position — and here we
+need the position too, to know which header on the page (`0` = `#`,
+`1` = the next one, and so on) each name should be checked against.
+
+`.entries()` is a built-in array method that turns `['#', 'Full
+Name', ...]` into a sequence of `[index, value]` pairs: `[0, '#']`,
+`[1, 'Full Name']`, and so on — position and value bundled together.
+
+`[index, name]` in the loop is **array destructuring** — the same
+idea as the object destructuring explained above, just matched by
+*position* instead of by name. Each `[index, value]` pair coming out
+of `.entries()` gets unpacked on the spot: the first slot goes into
+`index`, the second into `name`. That's what lets the loop body use
+`this.columnHeaders.nth(index)` to grab the right header element and
+compare it against `name`, for every column, in one pass.
 
 </details>
 

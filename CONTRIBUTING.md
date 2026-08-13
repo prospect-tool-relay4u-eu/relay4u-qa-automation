@@ -280,13 +280,31 @@ await signUpPage.signUp(user.fullName, user.email, user.password);
 
 ## 6. Writing a Page Object
 
-Each page is a plain JS class in `pages/` (or `pages/auth/` for
-auth-flow pages), **extending `BasePage`**. Constructor takes the
+Each page is a plain JS class in `pages/` (or a domain subfolder —
+`pages/auth/`, `pages/projects/` — once there's more than one or two
+pages for that area), **extending `BasePage`**. Constructor takes the
 Playwright `page` and an optional `actorLabel`, and stores locators as
 readonly-by-convention fields. **Wrap every action and assertion in
 `this.step(title, callback)`** — inherited from `BasePage` — so it shows
-up named in the HTML report/trace. Add one method per user action, plus
-an `assertLoaded()` method anchored to something unique to that page:
+up named in the HTML report/trace.
+
+**Method order inside the class is fixed — always the same four groups,
+in this order, with no comments labeling them (the order alone is the
+documentation):**
+
+1. **Constructor** — every *static* locator (one that doesn't depend on
+   a parameter) as a field.
+2. **Floating locators** — methods that build a `Locator` dynamically
+   from a parameter, e.g. `getRow(rowIndex)`, `getCell(rowIndex,
+   columnIndex)`. These exist because the locator can't be built once in
+   the constructor — it needs an argument only known at call time. See
+   `getProjectCard(projectName)` / `getProjectCardActions(projectName)`
+   in `REFERENCE.md` under `pages/projects/ProjectsPage.js` for a worked
+   example, including why one of them returns an object of Locators
+   instead of a single one.
+3. **`openAndAssert()`**, if the page has one — see below.
+4. **Actions**, then **assertions** — one method per user action, plus
+   an `assertLoaded()` method anchored to something unique to that page.
 
 ```js
 import { expect } from '../helpers/testStep';
@@ -299,6 +317,17 @@ export class LoginPage extends BasePage {
     this.passwordInput = page.getByRole('textbox', { name: 'Password' });
     this.logInButton = page.getByRole('button', { name: 'Log in' });
     this.pageAnchor = page.getByRole('heading', { name: 'Log in' });
+  }
+
+  async openAndAssert() {
+    await this.goto();
+    await this.assertLoaded();
+  }
+
+  async goto() {
+    await this.step(`Go to login page`, async () => {
+      await this.page.goto('/login');
+    });
   }
 
   async login(email, password) {
@@ -327,6 +356,21 @@ This is a hard rule, not a style preference — a new Page Object method
 that doesn't use `this.step()` should get a "Request changes" in review.
 See `REFERENCE.md` under `pages/BasePage.js` for the full API, including
 `actorLabel` (for multi-user tests).
+
+**`openAndAssert()`** — `BasePage` declares it and throws by default
+(`openAndAssert() is not implemented for X`). Override it on any page
+that has a real, directly-reachable entry point: `goto()` +
+`assertLoaded()` for a page with a fixed URL (like `/login` above), or
+`waitForPage()` + `assertLoaded()` for a page reached via a dynamic URL
+(e.g. `ProjectDetailsPage`, at `/projects/:id` — there's nothing to
+`goto()` directly, you land there by clicking through). One call that
+lands on the page and confirms it actually loaded, instead of every
+caller doing both steps by hand — and it means you never need a bare
+`goto()` sitting alone in a test right before an `assertLoaded()` call.
+Skip it on pages with no standalone entry point of their own (e.g.
+`VerifyEmailPage`, only ever reached mid-flow with a real pending
+verification code — navigating there directly isn't a meaningful
+scenario).
 
 Prefer `getByRole` / `getByLabel` / `getByPlaceholder` locators over CSS
 selectors — they are more resistant to markup changes. If you're unsure
