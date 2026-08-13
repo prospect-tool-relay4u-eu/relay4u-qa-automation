@@ -90,10 +90,16 @@ from your local `main`:
 ```
 git checkout main
 git pull
+npm ci
 git checkout -b <your-name>/<test-id>-<short-title>
-```
 
----
+```
+ `npm ci` (not `npm install`) does a clean install strictly matching
+   `package-lock.json` — it removes `node_modules` first, so you end up
+   with exactly the same dependency versions as everyone else, not
+   whatever you happened to have installed last week. Only create your
+   new branch and start writing once this is done.
+
 
 ## ⚠️ HOW TO RUN TESTS — READ THIS BEFORE YOU RUN ANYTHING
 
@@ -128,6 +134,7 @@ it only runs a test once you click it, including `@email-quota` tests.
 
    `npm install` also registers the Husky pre-commit hook automatically
    (via the `prepare` script).
+
 
 2. Create your local `.env` file from the template:
 
@@ -219,6 +226,24 @@ test('TC-AUTH-002: Login with valid credentials returns JWT', async ({ page }) =
 });
 ```
 
+If a meaningful title pushes the line over 80 characters even after
+Prettier formats it (`npx prettier --write`), don't try to restructure
+the `test(...)` call to break it across lines — Prettier has a special
+formatter for `test`/`it`/`describe` calls and will just collapse it
+back to one line every time. Add `// eslint-disable-next-line max-len`
+directly above instead:
+
+```js
+// eslint-disable-next-line max-len
+test('TC-AUTH-009: Some genuinely long, meaningful title', async ({ page }) => {
+  ...
+});
+```
+
+Run Prettier first, though — the title's own line often already fits
+once Prettier collapses the call, and the disable comment just becomes
+noise (ESLint flags unused disable directives too).
+
 ### Code style inside a test body
 
 Group statements by kind and separate each group with a blank line:
@@ -255,17 +280,21 @@ await signUpPage.signUp(user.fullName, user.email, user.password);
 
 ## 6. Writing a Page Object
 
-Each page is a plain JS class in `pages/`. Constructor takes the Playwright
-`page` and stores locators as readonly-by-convention fields; add one method
-per user action, plus an `assertLoaded()` method anchored to something
-unique to that page:
+Each page is a plain JS class in `pages/` (or `pages/auth/` for
+auth-flow pages), **extending `BasePage`**. Constructor takes the
+Playwright `page` and an optional `actorLabel`, and stores locators as
+readonly-by-convention fields. **Wrap every action and assertion in
+`this.step(title, callback)`** — inherited from `BasePage` — so it shows
+up named in the HTML report/trace. Add one method per user action, plus
+an `assertLoaded()` method anchored to something unique to that page:
 
 ```js
-import { expect } from '@playwright/test';
+import { expect } from '../helpers/testStep';
+import { BasePage } from './BasePage';
 
-export class LoginPage {
-  constructor(page) {
-    this.page = page;
+export class LoginPage extends BasePage {
+  constructor(page, actorLabel = null) {
+    super(page, actorLabel);
     this.emailInput = page.getByRole('textbox', { name: 'Email' });
     this.passwordInput = page.getByRole('textbox', { name: 'Password' });
     this.logInButton = page.getByRole('button', { name: 'Log in' });
@@ -273,16 +302,31 @@ export class LoginPage {
   }
 
   async login(email, password) {
-    await this.emailInput.fill(email);
-    await this.passwordInput.fill(password);
-    await this.logInButton.click();
+    await this.step(`Fill "Email" with "${email}"`, async () => {
+      await this.emailInput.fill(email);
+    });
+
+    await this.step(`Fill "Password" with "${password}"`, async () => {
+      await this.passwordInput.fill(password);
+    });
+
+    await this.step(`Click "Log in"`, async () => {
+      await this.logInButton.click();
+    });
   }
 
   async assertLoaded() {
-    await expect(this.pageAnchor).toBeVisible();
+    await this.step(`Assert login page is loaded`, async () => {
+      await expect(this.pageAnchor).toBeVisible();
+    });
   }
 }
 ```
+
+This is a hard rule, not a style preference — a new Page Object method
+that doesn't use `this.step()` should get a "Request changes" in review.
+See `REFERENCE.md` under `pages/BasePage.js` for the full API, including
+`actorLabel` (for multi-user tests).
 
 Prefer `getByRole` / `getByLabel` / `getByPlaceholder` locators over CSS
 selectors — they are more resistant to markup changes. If you're unsure

@@ -32,10 +32,4 @@ export default [
       'playwright/expect-expect': 'off',
     },
   },
-  {
-    rules: {
-      'no-unused-vars': 'off',
-    },
-    files: ['**/*.spec.js'],
-  },
 ];
