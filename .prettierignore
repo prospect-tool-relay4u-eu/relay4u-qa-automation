@@ -4,3 +4,8 @@ test-results
 blob-report
 package-lock.json
 CONTRIBUTING.md
+.github/workflows/playwright.yml
+DEVLOG.md
+eslint.config.mjs
+package.json
+REFERENCE.md
