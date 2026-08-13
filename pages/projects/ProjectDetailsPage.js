@@ -44,13 +44,25 @@ export class ProjectDetailsPage extends BasePage {
     });
   }
 
+  waitForRecordSaved() {
+    return this.page.waitForResponse(
+      resp =>
+        resp.request().method() === 'PUT' &&
+        resp.url().includes('/api/records/') &&
+        resp.ok(),
+    );
+  }
+
   async clickRecordField(rowIndex, columnIndex) {
     await this.step(
       `Click record field in column ${columnIndex}, row "${rowIndex}"`,
       async () => {
         const cell = this.getCell(rowIndex, columnIndex);
         await cell.click();
+
+        const saved = this.waitForRecordSaved();
         await this.page.keyboard.press('Tab');
+        await saved;
       },
     );
   }
@@ -63,7 +75,10 @@ export class ProjectDetailsPage extends BasePage {
         const cell = this.getCell(rowIndex, columnIndex);
         await cell.click();
         await cell.getByRole('textbox').fill(value);
+
+        const saved = this.waitForRecordSaved();
         await this.page.keyboard.press('Tab');
+        await saved;
       },
     );
   }
