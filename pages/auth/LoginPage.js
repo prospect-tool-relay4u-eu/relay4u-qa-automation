@@ -18,6 +18,17 @@ export class LoginPage extends BasePage {
     });
   }
 
+  async openAndAssert() {
+    await this.goto();
+    await this.assertLoaded();
+  }
+
+  async goto() {
+    await this.step(`Go to login page`, async () => {
+      await this.page.goto('/login');
+    });
+  }
+
   async login(email, password) {
     await this.step(`Fill "Email" with "${email}"`, async () => {
       await this.emailInput.fill(email);
@@ -29,6 +40,13 @@ export class LoginPage extends BasePage {
 
     await this.step(`Click "Log in"`, async () => {
       await this.logInButton.click();
+    });
+
+    await this.step(`Wait for login API response`, async () => {
+      await this.page.waitForResponse(
+        resp => resp.url().includes('/api/auth/login') && resp.status() === 200,
+        { timeout: 30000 },
+      );
     });
   }
 

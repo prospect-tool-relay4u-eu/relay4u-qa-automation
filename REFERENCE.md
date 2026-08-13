@@ -42,6 +42,14 @@ export class SomePage extends BasePage {
 }
 ```
 
+Also declares `openAndAssert()`, which throws by default
+(`openAndAssert() is not implemented for SomePage`). Every Page Object
+that has a real, directly-navigable entry point overrides it with its
+own `goto()` + `assertLoaded()` (or `waitForPage()` + `assertLoaded()`
+for pages reached via a dynamic URL, like `ProjectDetailsPage`) — one
+call that lands on the page and confirms it actually loaded, instead of
+callers doing both steps by hand every time.
+
 </details>
 
 <details>
@@ -49,6 +57,7 @@ export class SomePage extends BasePage {
 
 The `/` landing page — entry point for both registration and login.
 
+- `openAndAssert()` — `goto()` + `assertLoaded()`
 - `goto()` — navigates to `/`
 - `clickSignUp()` — clicks "Sign up for free"
 - `clickLogIn()` — clicks "I already have an account"
@@ -61,6 +70,8 @@ The `/` landing page — entry point for both registration and login.
 
 `/register`. Fills out and submits the registration form.
 
+- `openAndAssert()` — `goto()` + `assertLoaded()`
+- `goto()` — navigates to `/register`
 - `signUp(fullName, email, password)` — fills all four fields and clicks
   "Sign up"
 - `assertLoaded()`
@@ -90,7 +101,10 @@ Get `code` from `helpers/email/getVerificationCode.js`.
 `/login`. Also where the "Account verified!" success message shows up
 right after email verification.
 
-- `login(email, password)`
+- `openAndAssert()` — `goto()` + `assertLoaded()`
+- `goto()` — navigates to `/login`
+- `login(email, password)` — waits for the login API response before
+  proceeding, to avoid a fake failure when the API is slow to respond
 - `assertLoaded()`
 - `assertInvalidCredentialsError()` — asserts the generic wrong-credentials
   message
@@ -100,112 +114,151 @@ right after email verification.
 </details>
 
 <details>
-<summary><code>pages/ProjectsPage.js</code></summary>
+<summary><code>pages/projects/ProjectsPage.js</code></summary>
 
-`/projects`. Lands here after a successful login.
+`/projects`. Lands here after a successful login — no `goto()` needed
+right after `login()`, the app redirects here on its own; just call
+`assertLoaded()` (or use `openAndAssert()` when arriving from anywhere
+else, e.g. test cleanup in `afterEach`).
 
+- `openAndAssert()` — `goto()` + `assertLoaded()`
 - `assertLoaded()` — asserts the "Projects" heading (`exact: true` —
   without it, this also matches the "No projects yet" empty-state
   heading)
 - `assertUserNameDisplayed(fullName)` — asserts the logged-in user's name
   is shown
+- `clickNewProjectButton()` — opens the "New project" form
+- `assertCreateProjectFormVisible()` — asserts the form is visible and
+  "Create" button is disabled
+- `fillProjectNameField(name)`
+- `clickCreateProjectButton()` — submits the form
+- `assertProjectCreated(name)`
+- `deleteProject(name)`
+- `assertProjectDeleted(name)`
+- `clickLogOut()`
 
-</details>
+**Internal:** `getProjectCard(projectName)` returns the Locator for one
+project's card, filtered by its visible name — reused by
+`assertProjectCreated`/`assertProjectDeleted`/`deleteProject` instead of
+each rebuilding the same filter separately.
 
-## Helpers
-
-<details>
-<summary><code>helpers/testStep.js</code></summary>
-
-`testStep(title, stepToRun, actorLabel = null)` — thin wrapper around
-Playwright's `test.step()`. Used internally by `BasePage.step()`; you
-normally call `this.step(...)` from inside a Page Object rather than this
-directly.
-
-Also re-exports `expect` from `@playwright/test`, so Page Objects can
-`import { expect } from '../helpers/testStep'` instead of
-`@playwright/test` directly.
-
-</details>
-
-<details>
-<summary><code>helpers/email/getVerificationCode.js</code></summary>
-
-Talks to testmail.app to receive a real verification email during tests.
-
-- `createTestEmail()` → `{ email, tag }`. `email` is a unique inbox
-  (`{namespace}.{uuid}@inbox.testmail.app`); use it wherever the test
-  needs an email address. Keep `tag` around.
-- `getVerificationCode(tag)` — waits for the email tagged `tag` to arrive
-  (via testmail.app's `livequery`) and returns the 6-digit code as a
-  string.
-
-**Costs one real email per `createTestEmail()` call** — shared 100/month
-quota across the team (namespace `2t1jc`). Don't call this in a loop or in
-every test; only where the test specifically needs to prove the email flow
-works.
-
-Requires `TESTMAIL_API_KEY`, `TESTMAIL_API_URL`, `TESTMAIL_NAMESPACE` in
-`.env`.
-
-</details>
-
-## Constants
-
-<details>
-<summary><code>helpers/constants/authMessages.js</code></summary>
-
-`AUTH_MESSAGES` — exact strings the app shows for auth-related states
-(verified, invalid credentials, password requirements, generic sign-up
-error). Import this instead of hardcoding the string in a Page Object, and
-match locators with `{ exact: true }` against it.
-
-Each domain gets its own file (`fieldMessages.js`, `projectMessages.js`,
-etc.) instead of one shared file, to avoid merge conflicts between people
-working on different areas.
-
-</details>
-
-## Test Data
-
-<details>
-<summary><code>helpers/testData/generateNewUser.js</code></summary>
-
-`generateNewUser()` — returns `{ fullName, email, password }` via Faker.
-Password always ends in `Aa1!` to guarantee upper/lower/digit/special
-regardless of what Faker generates randomly, matching the backend's
-complexity requirement.
-
-The `email` field is a throwaway Faker address — if the test needs to
-actually receive mail (e.g. registration+verification), override it with
-`createTestEmail()`'s `email` before use:
+`getProjectCardActions(projectName)` builds on `getProjectCard` and
+returns an object with that card's action buttons, instead of a single
+Locator:
 
 ```js
-const { email, tag } = createTestEmail();
-const user = { ...generateNewUser(), email };
+getProjectCardActions(projectName) {
+  const card = this.getProjectCard(projectName);
+
+  return {
+    deleteButton: card.getByRole('button', { name: 'Delete project', exact: true }),
+    confirmDeleteButton: card.getByRole('button', { name: 'Yes, delete', exact: true }),
+  };
+}
+```
+
+`deleteProject()` then does:
+
+```js
+const { deleteButton, confirmDeleteButton } =
+  this.getProjectCardActions(projectName);
+
+await deleteButton.click();
+await confirmDeleteButton.click();
+```
+
+What `const { deleteButton, confirmDeleteButton } = ...` means: this is
+called **object destructuring**. `getProjectCardActions()` returns one
+object with two properties on it. Instead of writing:
+
+```js
+const actions = this.getProjectCardActions(projectName);
+const deleteButton = actions.deleteButton;
+const confirmDeleteButton = actions.confirmDeleteButton;
+```
+
+destructuring does the exact same thing in one line — it pulls each
+named property straight out into its own variable, matched by name.
+Nothing more advanced is happening here than that.
+
+</details>
+
+<details>
+<summary><code>pages/projects/ProjectDetailsPage.js</code></summary>
+
+`/projects/:id`. An opened, editable project — the record table plus
+field management.
+
+**Row/column indexing:** `rowIndex` is the visible row number shown in
+the `#` column (matched against `td.td-num` text), not an array index.
+`columnIndex` is zero-based across all `<td>` in that row, left to right
+(`0` = `#`, `1` = first data column, etc.)
+
+- `openAndAssert()` — `waitForPage()` + `assertLoaded()` (no `goto()`
+  here — the URL is dynamic per project id, so there's nothing to
+  navigate to directly; you land here by clicking through)
+- `waitForPage()` — waits for the URL to match `/projects/:id`
+- `waitForProject(projectId)` — waits for the URL to match a specific
+  project id
+- `assertLoaded()` — asserts page is loaded
+- `assertNewProjectReady(projectName)` — the check right after creating
+  a project: the `#` column header is visible (table has rendered), the
+  breadcrumb (`.breadcrumb-current`) shows `projectName`, and the
+  empty-state row (`No records — click "+ Add record" to get started`)
+  is visible. Anchoring on the `#` header first avoids a race where the
+  breadcrumb/empty-state text is checked before the table has actually
+  rendered.
+- `clickAddRecord()`
+- `assertRecordFieldAdded(rowIndex)` — asserts a row with that visible
+  number has been added
+- `clickRecordField(rowIndex, columnIndex)` — clicks the cell, then
+  presses `Tab` to commit the value (the app saves on blur — skipping
+  the `Tab` can leave the value unsaved)
+- `fillRecordField(rowIndex, columnIndex, value)` — clicks the cell,
+  fills its textbox, then presses `Tab` to commit the value (the app
+  saves on blur — skipping the `Tab` can leave the value unsaved)
+- `assertRecordFieldProperValue(rowIndex, columnIndex, expectedValue)`
+- `clickRecordDeleteButton(rowIndex)` — deletes the entire record row
+- `assertRecordDeleted(rowIndex)` — asserts the row no longer exists
+- `assertColumnsOrder(...columnNames)` — asserts column headers match
+  names and order, left to right (`0` = `#`)
+- `clickProjectsNavLink()` — clicks 'Projects' navigation button
+
+**Internal:** `getRow(rowIndex)` / `getCell(rowIndex, columnIndex)` build
+the locators above — not meant to be called directly from tests.
+
+</details>
+
+---
+
+## Fixtures
+
+<details>
+<summary><code>fixtures/authFixtures.js</code></summary>
+
+Extends Playwright's base `test` with a `loginPage` fixture — just
+constructs a `LoginPage` instance and hands it to the test, nothing
+more. It does **not** log in for you: the fixture is deliberately
+"dumb" (no side effects), so login stays a plain call in
+`test.beforeEach()` inside each spec file instead of being hidden
+inside fixture setup. That keeps things extensible — a spec that needs
+two logged-in actors, or a different user per test, isn't fighting a
+fixture that already assumes one fixed login flow.
+
+```js
+import { test } from '../fixtures/authFixtures';
+
+test.beforeEach(async ({ loginPage }) => {
+  await loginPage.goto();
+  await loginPage.login(existingUser.email, existingUser.password);
+});
+
+test('some scenario', async ({ page }) => {});
 ```
 
 </details>
 
-<details>
-<summary><code>helpers/testData/existingUser.js</code></summary>
-
-A real, already-verified staging account (`TEST_USER_EMAIL` /
-`TEST_USER_PASSWORD` from `.env`). Use this whenever a test just needs "a
-logged-in user" and doesn't care how they got there — cheaper than
-registering fresh every time.
-
-Don't use it for tests that need a pristine/empty account (e.g. "no
-projects yet" empty-state checks) — this account accumulates data from
-every test that uses it.
-
-</details>
-
-## Fixtures
-
-Nothing here yet — see `DEVLOG.md` for the planned reused-auth-state
-fixture (log in once, reuse the JWT across tests instead of registering
-fresh every time).
+---
 
 ## Builders
 
