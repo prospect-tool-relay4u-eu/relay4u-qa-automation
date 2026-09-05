@@ -88,10 +88,13 @@ The `/` landing page — entry point for both registration and login.
 `/verify-email`. Where the 6-digit code from the registration email gets
 entered.
 
+- `getVerificationCode()` — reads the code straight off this staging
+  environment's on-screen "Staging verification code" popup
+  (`.staging-code-popup-code`), no email needed. This page has no
+  knowledge of `TestmailService` (see `Helpers` below) — a test that
+  needs the real-email fallback calls that class directly instead.
 - `verifyEmail(code)` — fills the code and clicks "Verify account"
 - `assertLoaded()`
-
-Get `code` from `helpers/email/getVerificationCode.js`.
 
 </details>
 
@@ -283,30 +286,186 @@ compare it against `name`, for every column, in one pass.
 
 ---
 
+## API clients
+
+Mirror Page Objects, but for API testing: a `BaseAPI` parent, extended
+by domain-specific clients (e.g. `AuthAPI`). Constructed with
+Playwright's `request` fixture (`APIRequestContext`), not `page`.
+
+<details>
+<summary><code>api/BaseAPI.js</code></summary>
+
+Base class every API client extends. Constructor: `new SomeAPI(request,
+actorLabel = null)`.
+
+- `this.step(title, callback)` — same purpose as `BasePage.step()`:
+  wraps `test.step()` so the call shows up named in the report/trace
+- `parseStatus(response)` — `response.status()`
+- `parseBody(response)` — `await response.json()`
+
+</details>
+
+<details>
+<summary><code>api/auth/AuthAPI.js</code></summary>
+
+Talks to the auth backend directly
+(`relay4u-auth-be-staging-....run.app`) — a separate host from the
+frontend's `BASE_URL`, not something `request.post('/api/...')` would
+reach on its own.
+
+Low-level (one HTTP call each, return the raw response):
+
+- `register(user)` — `POST /api/auth/register`
+- `verifyEmail(email, code)` — `POST /api/auth/verify-email`
+- `login(email, password)` — `POST /api/auth/login`
+
+Composed (call the above, assert/parse, return only what the caller
+needs):
+
+- `createNewUser(user)` — registers, asserts `201`, pulls
+  `verificationCode` straight off the register response (this
+  staging's convenience field), then verifies the email
+- `assertSuccessfulCreation(response)` — asserts `200`
+- `loginUser(user)` — logs in, asserts `200`, returns the JWT `token`
+  string from the response body
+
+</details>
+
+---
+
+## Helpers
+
+<details>
+<summary><code>helpers/decodeJwt.js</code></summary>
+
+Standalone functions, not tied to any class on purpose — meant to grow
+into a general response-decoding helper (other response shapes:
+tables, projects, etc.), not just auth/JWT.
+
+- `decodeJwtHeader(token)` — splits the JWT, base64url-decodes the
+  header segment, returns the parsed JSON object
+- `assertJwtHeaderAlgorithm(token, algorithm)` — asserts
+  `decodeJwtHeader(token).alg === algorithm`
+
+</details>
+
+<details>
+<summary><code>helpers/email/TestmailService.js</code></summary>
+
+**Currently unused** — no test imports this. Kept as a dormant,
+self-contained fallback for a future staging/environment that has no
+on-screen verification-code shortcut (right now, every test reads the
+code via `VerifyEmailPage.getVerificationCode()` instead — see above).
+Nothing else in the project imports this file, so deleting it would
+change nothing about how the suite currently runs.
+
+Static-method service class wrapping the testmail.app API — no
+instance is ever created, call both methods directly on the class:
+
+- `TestmailService.createTestEmail()` — returns `{ email, tag }`;
+  `email` is a unique `<namespace>.<tag>@inbox.testmail.app` address,
+  `tag` is what you poll for
+- `TestmailService.getVerificationCode(tag)` — polls testmail.app for
+  the email sent to that tag and extracts the 6-digit code from its
+  body
+
+**Before reviving it in any test:** every call sends a real email
+against a shared testmail.app quota — **100 emails/month, for everyone
+combined**. See `CONTRIBUTING.md` section 8 for the checklist (tag the
+test `@email-quota`, tell the team, switch back to
+`npm run test:no-quota`).
+
+</details>
+
+---
+
+## Actions
+
+Standalone functions combining multiple Page Objects/API clients into
+one named business step — the `ui/actions/*` idea from the academy
+material. They build their own Page Object/API client instances
+internally from raw `page`/`request`, instead of taking
+already-constructed ones, so a caller only needs the bare fixtures.
+
+<details>
+<summary><code>actions/auth/registerAndLoginUser.js</code></summary>
+
+Two interchangeable variants of the same outcome — a freshly
+registered, logged-in user with a real browser session — both with the
+identical signature `(page, request, user, actorLabel = null)`, so a
+caller can swap one for the other without changing anything else:
+
+- `registerAndLoginUser.viaApi(...)` — registers/verifies through
+  `AuthAPI` (fast, relies on this staging's convenience
+  `verificationCode` field), then logs in for real through `LoginPage`
+  so the browser gets an actual session — an API login alone returns a
+  token but sets nothing in the browser, so it can't carry a UI test
+  on its own.
+- `registerAndLoginUser.viaUi(...)` — the fully manual path: signs up
+  through `SignUpPage`, reads the code off `VerifyEmailPage`'s staging
+  popup, verifies, then logs in. Doesn't touch `request`/`AuthAPI` at
+  all. Portability note: on an environment without the staging popup,
+  swap `verifyEmailPage.getVerificationCode()` for
+  `TestmailService.getVerificationCode(tag)` (see
+  `helpers/email/TestmailService.js` — currently unused, kept for
+  exactly this case) and generate the user's email via
+  `TestmailService.createTestEmail()` instead of `generateNewUser()`'s
+  plain one.
+
+Both end on `projectsPage.assertLoaded()`, confirming the whole chain
+actually landed the user somewhere real.
+
+</details>
+
+---
+
 ## Fixtures
+
+<details>
+<summary><code>fixtures/fixtures.js</code></summary>
+
+The one to import from in test files. Merges every fixture file below
+via Playwright's `mergeTests`, so adding a new fixture file later
+doesn't require touching every test's import line.
+
+```js
+import { test } from '../fixtures/fixtures';
+```
+
+</details>
 
 <details>
 <summary><code>fixtures/authFixtures.js</code></summary>
 
-Extends Playwright's base `test` with a `loginPage` fixture — just
-constructs a `LoginPage` instance and hands it to the test, nothing
-more. It does **not** log in for you: the fixture is deliberately
-"dumb" (no side effects), so login stays a plain call in
-`test.beforeEach()` inside each spec file instead of being hidden
-inside fixture setup. That keeps things extensible — a spec that needs
-two logged-in actors, or a different user per test, isn't fighting a
-fixture that already assumes one fixed login flow.
+- `loginPage` — constructs a `LoginPage`, nothing more
+- `authApi` — constructs an `AuthAPI`, nothing more
+
+Both are deliberately "dumb" fixtures (no side effects) — no
+login/API call happens inside fixture setup, so it stays a plain call
+in the test body or `beforeEach()` instead of being hidden inside a
+fixture that already assumes one fixed flow. That keeps things
+extensible — a spec needing two logged-in actors, or a different user
+per test, isn't fighting a fixture that already decided how login
+works.
 
 ```js
-import { test } from '../fixtures/authFixtures';
+import { test } from '../fixtures/fixtures';
 
 test.beforeEach(async ({ loginPage }) => {
-  await loginPage.goto();
+  await loginPage.openAndAssert();
   await loginPage.login(existingUser.email, existingUser.password);
 });
 
 test('some scenario', async ({ page }) => {});
 ```
+
+</details>
+
+<details>
+<summary><code>fixtures/userFixtures.js</code></summary>
+
+- `user` — `generateNewUser()` handed straight to the test, nothing
+  more (same "dumb fixture" rule as above)
 
 </details>
 
