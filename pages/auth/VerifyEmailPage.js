@@ -7,6 +7,18 @@ export class VerifyEmailPage extends BasePage {
     this.codeInput = page.getByRole('textbox', { name: 'Verification code' });
     this.verifyButton = page.getByRole('button', { name: 'Verify account' });
     this.pageAnchor = page.getByRole('heading', { name: 'Email verification' });
+    this.stagingCodePopupCode = page.locator('.staging-code-popup-code');
+  }
+
+  async getVerificationCode() {
+    return await this.step(
+      'Read verification code from staging popup',
+      async () => {
+        const code = await this.stagingCodePopupCode.textContent();
+
+        return code.trim();
+      },
+    );
   }
 
   async verifyEmail(code) {

@@ -1,18 +1,11 @@
-import { test } from '@playwright/test';
+import { test } from '../../fixtures/fixtures';
 import { HomePage } from '../../pages/HomePage';
 import { SignUpPage } from '../../pages/auth/SignUpPage';
 import { VerifyEmailPage } from '../../pages/auth/VerifyEmailPage';
 import { LoginPage } from '../../pages/auth/LoginPage';
 import { ProjectsPage } from '../../pages/projects/ProjectsPage';
-import { generateNewUser } from '../../helpers/testData/generateNewUser';
-import {
-  createTestEmail,
-  getVerificationCode,
-} from '../../helpers/email/getVerificationCode';
 
-test('TC-AUTH-001 @email-quota', async ({ page }) => {
-  const { email, tag } = createTestEmail();
-  const user = { ...generateNewUser(), email };
+test('TC-AUTH-001', async ({ page, user }) => {
   const homePage = new HomePage(page, user.fullName);
   const signUpPage = new SignUpPage(page, user.fullName);
   const verifyEmailPage = new VerifyEmailPage(page, user.fullName);
@@ -28,7 +21,7 @@ test('TC-AUTH-001 @email-quota', async ({ page }) => {
 
   await verifyEmailPage.assertLoaded();
 
-  const code = await getVerificationCode(tag);
+  const code = await verifyEmailPage.getVerificationCode();
 
   await verifyEmailPage.verifyEmail(code);
 

@@ -1,15 +1,14 @@
-import { test } from '../../fixtures/authFixtures.js';
+import { test } from '../../fixtures/fixtures.js';
 import { ProjectsPage } from '../../pages/projects/ProjectsPage.js';
 import { ProjectDetailsPage } from '../../pages/projects/ProjectDetailsPage.js';
 import { HomePage } from '../../pages/HomePage.js';
 import { faker } from '@faker-js/faker';
-import { existingUser } from '../../helpers/testData/existingUser';
+import { registerAndLoginUser } from '../../actions/auth/registerAndLoginUser.js';
 
 let projectName;
 
-test.beforeEach(async ({ loginPage }) => {
-  await loginPage.openAndAssert();
-  await loginPage.login(existingUser.email, existingUser.password);
+test.beforeEach(async ({ page, request, user }) => {
+  await registerAndLoginUser.viaApi(page, request, user);
 });
 
 test.afterEach(async ({ page }) => {

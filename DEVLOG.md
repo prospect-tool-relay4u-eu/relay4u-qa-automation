@@ -7,6 +7,121 @@ written to be copy-pasted straight into the matching PR description.
 
 ---
 
+## 2026-09-06 — `TC-AUTH-001` drops the real email; `TestmailService` parked, unused
+
+Bartosz's staging update (the on-screen "Staging verification code"
+popup) made the testmail.app path unnecessary for `TC-AUTH-001` too —
+it was the last test still sending a real email. Switched it to
+`VerifyEmailPage.getVerificationCode()`, the same popup-reading method
+every other test already uses, and dropped its `@email-quota` tag
+(nothing sends real email anymore).
+
+Practical effect: **"How to run tests" in `CONTRIBUTING.md` is back to
+the plain `npm run test`** — `npm run test:no-quota` had nothing left
+to exclude.
+
+While retiring that path, turned the old testmail.app helper (two
+standalone exported functions) into a proper static-method service
+class instead of just deleting it: `helpers/email/TestmailService.js`,
+called directly on the class, no instantiation —
+`TestmailService.createTestEmail()` / `TestmailService.getVerificationCode(tag)`.
+It's **not deleted** — kept parked as a self-contained,
+currently-unused service. Nothing in the project imports it anymore;
+deleting the file would change nothing about how the suite runs today.
+It stays as the ready-made fallback for a future staging/environment
+that doesn't have the popup — `CONTRIBUTING.md` section 8 has the
+checklist for reviving it (retag `@email-quota`, tell the team, switch
+back to `npm run test:no-quota`).
+
+**Changed:**
+
+- `tests/auth/tc-auth-001-registration.spec.js` — uses
+  `verifyEmailPage.getVerificationCode()` instead of the email helper;
+  dropped `@email-quota` from the title.
+- `helpers/email/getVerificationCode.js` → `helpers/email/TestmailService.js`
+  (the two exported functions merged into one class with static
+  methods).
+- `CONTRIBUTING.md` — "How to run tests" now shows `npm run test`;
+  section 8 rewritten around `TestmailService` being dormant, not
+  active.
+- `REFERENCE.md` — `TestmailService` entry marked unused;
+  `registerAndLoginUser.viaUi`'s portability note points at
+  `TestmailService` directly.
+
+---
+
+## 2026-09-06 — TC-AUTH-002 (API + JWT), auth/user fixtures, register+login action
+
+`tests/auth/tc-auth-002-login.spec.js`: registers a fresh user via API,
+logs in via API, and asserts the returned JWT's header algorithm is
+`RS256`. No UI involved — pure `APIRequestContext` test.
+
+**New layers**, mirroring the Page Object split (`BasePage` →
+`LoginPage`):
+
+- `api/BaseAPI.js` / `api/auth/AuthAPI.js` — API client classes.
+  `AuthAPI` wraps `/api/auth/register`, `/verify-email`, `/login` on
+  the separate auth backend (`relay4u-auth-be-staging-...`, not the
+  main `BASE_URL` host) and composes them into `createNewUser(user)` /
+  `assertSuccessfulCreation(response)` / `loginUser(user)` so a test
+  body only makes 3-4 readable calls instead of juggling raw responses.
+- `helpers/decodeJwt.js` — standalone functions (not class methods):
+  `decodeJwtHeader(token)` and `assertJwtHeaderAlgorithm(token, alg)`.
+  Lives outside `AuthAPI` on purpose — this is a generic
+  response-decoding helper meant to grow with other response shapes
+  (tables, projects, etc.), not auth-specific.
+- `actions/auth/registerAndLoginUser.js` — two interchangeable
+  variants of the same outcome (a freshly registered, logged-in user
+  with a real browser session), both with the identical signature
+  `(page, request, user, actorLabel = null)`:
+  - `.viaApi(...)` — registers/verifies through `AuthAPI` (fast, skips
+    the signup form and email), then logs in for real through
+    `LoginPage` so the browser gets an actual session — an API-only
+    login returns a token but sets nothing in the browser, so it can't
+    carry a UI test on its own.
+  - `.viaUi(...)` — the fully manual path: signs up through
+    `SignUpPage`, reads the code off `VerifyEmailPage`'s on-screen
+    "Staging verification code" popup (new
+    `VerifyEmailPage.getVerificationCode()`), verifies, then logs in.
+    Doesn't touch `request`/`AuthAPI` at all.
+
+  Both end on `projectsPage.assertLoaded()`, confirming the whole
+  chain worked.
+- `fixtures/userFixtures.js` — `user` fixture, just
+  `generateNewUser()` + `use()`, no side effects.
+- `fixtures/fixtures.js` — collector fixture using Playwright's
+  `mergeTests(authTest, userTest)`, so new fixture files can be added
+  without touching every test's import.
+
+`tests/e2e/tc-smoke-001-urgent-path.spec.js` — `beforeEach` no longer
+logs in as the shared `existingUser`; it registers+logs in a fresh
+user per run via `registerAndLoginUser.viaApi(page, request, user)`.
+Removes a cross-test dependency on shared account state.
+
+**Known flake (new): Cloud Run cold start, staging.** `fe`, `auth-be`
+and `be` are three independent Cloud Run services that scale to zero
+when idle. The first request to a cold one can take 20-30s, which can
+exceed a hook's 30s test timeout — and because each service warms up
+independently, a run can hit one cold service, "fix" itself, then hit
+a *different* cold service on the next attempt (observed: login timed
+out on attempt 1, project creation timed out on attempt 2, everything
+passed in under 6s on attempt 3). Not a code bug. Mitigated by turning
+on `retries: 2` locally too (previously CI-only) in
+`playwright.config.js`, so a cold-start failure self-heals on rerun
+instead of requiring a manual retry.
+
+**Changed:**
+
+- `playwright.config.js` — `retries` is now `2` unconditionally
+  (was CI-only).
+- `tests/e2e/tc-smoke-001-urgent-path.spec.js` — see above.
+- `tests/auth/tc-auth-002-login.spec.js` — new.
+- `REFERENCE.md` — added `API clients`, `Helpers`, and `Actions`
+  sections; updated `Fixtures` (`fixtures.js`, `authApi`,
+  `userFixtures.js`) and `VerifyEmailPage`.
+
+---
+
 ## 2026-08-13 — TC-SMOKE-001 stabilized: Page Object cleanup, `openAndAssert()`, folder reorg
 
 Reworked Mateusz's original `TC-SMOKE-001` branch end-to-end

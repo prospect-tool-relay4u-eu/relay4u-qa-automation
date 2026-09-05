@@ -125,17 +125,20 @@ copy is current:
 git log main -- path/to/file.js
 ```
 
-
+### How to run tests
 
 ```
-npm run test:no-quota
+npm run test
 ```
 
-**THIS IS THE ONLY COMMAND YOU SHOULD RUN DAY TO DAY.** It runs every test
-except the ones tagged `@email-quota` (currently `TC-AUTH-001`). Those
-tests send a real email through testmail.app — a shared team quota of
-**100 emails/month, for everyone combined**. Running the wrong command a
-few times can burn through it.
+**THIS IS THE COMMAND YOU SHOULD RUN DAY TO DAY.** No test currently
+sends a real email, so there's nothing to exclude — the plain command
+covers the whole suite. See section 8 for why that wasn't always true,
+and what changes if it becomes true again.
+
+(Same convention as section 3: the `npm run` script for day-to-day
+use, `npx playwright test <path>` directly when you want to target a
+single file/folder or pass extra flags.)
 
 Writing or debugging a test and want to interact with it visually?
 
@@ -144,7 +147,7 @@ npx playwright test --ui
 ```
 
 This is safe to use freely — UI Mode does **not** run anything by itself,
-it only runs a test once you click it, including `@email-quota` tests.
+it only runs a test once you click it.
 
 ---
 
@@ -176,7 +179,8 @@ it only runs a test once you click it, including `@email-quota` tests.
    npx playwright install
    ```
 
-   See the box above for how to actually run the tests.
+   See "How to run tests" in section 1 above for how to actually run
+   the tests.
 
 ## 3. Code quality tools
 
@@ -297,10 +301,11 @@ await signUpPage.signUp(user.fullName, user.email, user.password);
   will warn if you do.
 - Tag tests where relevant: `@smoke`, `@regression`, `@security`, `@idor`,
   `@crud` (append to the test title, e.g. `'TC-SEC-001: ... @security'`).
-- Tag any test that sends a real email (via `createTestEmail()` /
-  `getVerificationCode()`, see `REFERENCE.md`) with `@email-quota` — see
-  the "HOW TO RUN TESTS" box after section 1 for how to exclude these from
-  a normal test run.
+- No test currently sends a real email, so `@email-quota` isn't in use
+  right now — see section 8 below before reviving
+  `TestmailService.createTestEmail()` / `TestmailService.getVerificationCode()`
+  in any test, including retagging it `@email-quota` and updating "How
+  to run tests" in section 1.
 
 ## 6. Writing a Page Object
 
@@ -419,3 +424,33 @@ your PR**, as part of finishing the scenario, not as an afterthought:
 Both files exist so the next person (teammate or future you) can find out
 what already exists and how to use it without re-reading every diff in the
 git history.
+
+## 8. `TestmailService` — dormant real-email fallback
+
+Staging used to have no way to get a verification code except a real
+email, so `TC-AUTH-001` sent one through testmail.app and polled for
+it. Bartosz's staging update added an on-screen "Staging verification
+code" popup instead, so every test (including `TC-AUTH-001` now) reads
+the code straight off the page via `VerifyEmailPage.getVerificationCode()` —
+no email, no third-party service, no quota risk. That's why "How to
+run tests" in section 1 is back to the plain `npm run test`.
+
+The old real-email code wasn't deleted — it's parked in
+`helpers/email/TestmailService.js` as a self-contained, currently
+**unused** service class (`TestmailService.createTestEmail()` /
+`TestmailService.getVerificationCode(tag)`; see `REFERENCE.md`). Reason
+to keep it: if this framework ever runs against a staging/environment
+without the popup, that's the ready-made way to get a code again —
+nothing needs to be rebuilt from scratch, and no other file in the
+project imports it, so it costs nothing to leave sitting there unused.
+
+**If you ever do wire `TestmailService` back into a test:**
+
+1. Tag that test `@email-quota`, so `npm run test:no-quota` (not the
+   plain `npm run test`) becomes the day-to-day command again — update
+   "How to run tests" in section 1 to say so.
+2. Tell the rest of the team, before merging. Every call sends a real
+   email against the shared testmail.app quota — **100 emails/month,
+   for everyone combined**. A test quietly drawing on that quota is how
+   it gets exhausted without anyone noticing, until it starts failing
+   for a reason that has nothing to do with a real bug.
