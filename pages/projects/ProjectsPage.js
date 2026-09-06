@@ -29,12 +29,12 @@ export class ProjectsPage extends BasePage {
     this.projectCards = page.locator('div.project-card');
   }
 
-  getProjectCard(projectName) {
+  #getProjectCard(projectName) {
     return this.projectCards.filter({ hasText: projectName });
   }
 
-  getProjectCardActions(projectName) {
-    const card = this.getProjectCard(projectName);
+  #getProjectCardActions(projectName) {
+    const card = this.#getProjectCard(projectName);
 
     return {
       deleteButton: card.getByRole('button', {
@@ -83,7 +83,7 @@ export class ProjectsPage extends BasePage {
   async deleteProject(projectName) {
     await this.step(`Delete project "${projectName}"`, async () => {
       const { deleteButton, confirmDeleteButton } =
-        this.getProjectCardActions(projectName);
+        this.#getProjectCardActions(projectName);
 
       await deleteButton.click();
       await confirmDeleteButton.click();
@@ -130,7 +130,7 @@ export class ProjectsPage extends BasePage {
     await this.step(
       `Assert project "${projectName}" is successfully created`,
       async () => {
-        await expect(this.getProjectCard(projectName)).toBeVisible();
+        await expect(this.#getProjectCard(projectName)).toBeVisible();
       },
     );
   }
@@ -139,7 +139,7 @@ export class ProjectsPage extends BasePage {
     await this.step(
       `Assert project "${projectName}" is successfully deleted`,
       async () => {
-        await expect(this.getProjectCard(projectName)).toHaveCount(0);
+        await expect(this.#getProjectCard(projectName)).toHaveCount(0);
       },
     );
   }

@@ -2,15 +2,17 @@ import { expect } from '../../helpers/testStep';
 import { BaseAPI } from '../BaseAPI';
 
 export class AuthAPI extends BaseAPI {
+  #baseUrl;
+
   constructor(request, actorLabel = null) {
     super(request, actorLabel);
-    this._baseUrl =
+    this.#baseUrl =
       'https://relay4u-auth-be-staging-942989865043.europe-west1.run.app';
   }
 
-  async register(user) {
+  async #register(user) {
     return await this.step(`Register user "${user.email}"`, async () => {
-      return await this.request.post(`${this._baseUrl}/api/auth/register`, {
+      return await this.request.post(`${this.#baseUrl}/api/auth/register`, {
         data: {
           name: user.fullName,
           email: user.email,
@@ -21,21 +23,21 @@ export class AuthAPI extends BaseAPI {
     });
   }
 
-  async verifyEmail(email, code) {
+  async #verifyEmail(email, code) {
     return await this.step(
       `Verify email "${email}" with code "${code}"`,
       async () => {
         return await this.request.post(
-          `${this._baseUrl}/api/auth/verify-email`,
+          `${this.#baseUrl}/api/auth/verify-email`,
           { data: { email, code } },
         );
       },
     );
   }
 
-  async login(email, password) {
+  async #login(email, password) {
     return await this.step(`Log in as "${email}"`, async () => {
-      return await this.request.post(`${this._baseUrl}/api/auth/login`, {
+      return await this.request.post(`${this.#baseUrl}/api/auth/login`, {
         data: { email, password },
       });
     });
@@ -43,13 +45,13 @@ export class AuthAPI extends BaseAPI {
 
   async createNewUser(user) {
     return await this.step(`Create new user "${user.email}"`, async () => {
-      const registerResponse = await this.register(user);
+      const registerResponse = await this.#register(user);
 
       expect(this.parseStatus(registerResponse)).toBe(201);
 
       const { verificationCode } = await this.parseBody(registerResponse);
 
-      return await this.verifyEmail(user.email, verificationCode);
+      return await this.#verifyEmail(user.email, verificationCode);
     });
   }
 
@@ -61,7 +63,7 @@ export class AuthAPI extends BaseAPI {
 
   async loginUser(user) {
     return await this.step(`Log in new user "${user.email}"`, async () => {
-      const loginResponse = await this.login(user.email, user.password);
+      const loginResponse = await this.#login(user.email, user.password);
 
       expect(this.parseStatus(loginResponse)).toBe(200);
 

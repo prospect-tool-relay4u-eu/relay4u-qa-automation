@@ -1,6 +1,6 @@
 import { expect, testStep } from './testStep';
 
-export function decodeJwtHeader(token) {
+function decodeJwtHeader(token) {
   const [headerBase64] = token.split('.');
 
   return JSON.parse(Buffer.from(headerBase64, 'base64url').toString('utf-8'));

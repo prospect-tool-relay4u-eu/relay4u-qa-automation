@@ -140,18 +140,20 @@ else, e.g. test cleanup in `afterEach`).
 - `assertProjectDeleted(name)`
 - `clickLogOut()`
 
-**Internal:** `getProjectCard(projectName)` returns the Locator for one
+**Private:** `#getProjectCard(projectName)` returns the Locator for one
 project's card, filtered by its visible name — reused by
 `assertProjectCreated`/`assertProjectDeleted`/`deleteProject` instead of
-each rebuilding the same filter separately.
+each rebuilding the same filter separately. Real `#` privacy, not just
+naming convention — `ProjectsPage` is a leaf class, so nothing outside
+it should ever need this Locator directly.
 
-`getProjectCardActions(projectName)` builds on `getProjectCard` and
+`#getProjectCardActions(projectName)` builds on `#getProjectCard` and
 returns an object with that card's action buttons, instead of a single
 Locator:
 
 ```js
-getProjectCardActions(projectName) {
-  const card = this.getProjectCard(projectName);
+#getProjectCardActions(projectName) {
+  const card = this.#getProjectCard(projectName);
 
   return {
     deleteButton: card.getByRole('button', { name: 'Delete project', exact: true }),
@@ -164,7 +166,7 @@ getProjectCardActions(projectName) {
 
 ```js
 const { deleteButton, confirmDeleteButton } =
-  this.getProjectCardActions(projectName);
+  this.#getProjectCardActions(projectName);
 
 await deleteButton.click();
 await confirmDeleteButton.click();
@@ -172,18 +174,18 @@ await confirmDeleteButton.click();
 
 What `const { deleteButton, confirmDeleteButton } = ...` means: this is
 called **object destructuring**. The general idea, in plain terms:
-`this.getProjectCardActions(projectName)` runs and hands back a
+`this.#getProjectCardActions(projectName)` runs and hands back a
 reference to one object sitting in memory — think of it as a box with
 labeled compartments (`deleteButton`, `confirmDeleteButton`, could be
 any number of them). Destructuring reaches into that box by label and
 pulls specific compartments out into their own standalone variables,
 in one step, instead of you doing it by hand one property at a time.
 
-`getProjectCardActions()` returns exactly that kind of object — one
+`#getProjectCardActions()` returns exactly that kind of object — one
 object with two properties on it. Instead of writing:
 
 ```js
-const actions = this.getProjectCardActions(projectName);
+const actions = this.#getProjectCardActions(projectName);
 const deleteButton = actions.deleteButton;
 const confirmDeleteButton = actions.confirmDeleteButton;
 ```
@@ -227,10 +229,10 @@ the `#` column (matched against `td.td-num` text), not an array index.
   number has been added
 - `clickRecordField(rowIndex, columnIndex)` — clicks the cell, then
   presses `Tab` to commit the value and waits for the save request to
-  complete (see `waitForRecordSaved()` below)
+  complete (see `#waitForRecordSaved()` below)
 - `fillRecordField(rowIndex, columnIndex, value)` — clicks the cell,
   fills its textbox, then presses `Tab` to commit the value and waits
-  for the save request to complete (see `waitForRecordSaved()` below)
+  for the save request to complete (see `#waitForRecordSaved()` below)
 - `assertRecordFieldProperValue(rowIndex, columnIndex, expectedValue)`
 - `clickRecordDeleteButton(rowIndex)` — deletes the entire record row
 - `assertRecordDeleted(rowIndex)` — asserts the row no longer exists
@@ -238,17 +240,19 @@ the `#` column (matched against `td.td-num` text), not an array index.
   names and order, left to right (`0` = `#`)
 - `clickProjectsNavLink()` — clicks 'Projects' navigation button
 
-**Internal:** `getRow(rowIndex)` / `getCell(rowIndex, columnIndex)` build
-the locators above — not meant to be called directly from tests.
+**Private:** `#getRow(rowIndex)` / `#getCell(rowIndex, columnIndex)`
+build the locators above. Real `#` privacy — `ProjectDetailsPage` is a
+leaf class, so a test can never reach these directly, only through the
+public actions/assertions that use them internally.
 
-**Internal:** `waitForRecordSaved()` waits for the record's `PUT
+**Private:** `#waitForRecordSaved()` waits for the record's `PUT
 /api/records/:id` response. The app saves the whole row's `values`
 object on every field blur, not one field at a time — so editing two
 fields back to back without waiting can send two overlapping `PUT`
 requests, and if they land out of order, whichever one arrives last
 wins and can silently wipe out the field the other one had just
 saved. `clickRecordField`/`fillRecordField` both press `Tab` (which
-triggers the save) and `waitForRecordSaved()` (armed *before* `Tab`,
+triggers the save) and `#waitForRecordSaved()` (armed *before* `Tab`,
 so a fast response can't resolve before Playwright starts listening
 for it) together, so the next action in the test never starts before
 the current field's save has actually landed on the backend.
@@ -313,14 +317,18 @@ Talks to the auth backend directly
 frontend's `BASE_URL`, not something `request.post('/api/...')` would
 reach on its own.
 
-Low-level (one HTTP call each, return the raw response):
+Low-level (one HTTP call each, return the raw response) — **private**
+(`#register`, `#verifyEmail`, `#login`): `AuthAPI` is a leaf class (not
+extended further), so nothing outside it should ever call the raw HTTP
+methods directly — real `#` privacy enforces that, not just naming
+convention. `#baseUrl` is private the same way.
 
-- `register(user)` — `POST /api/auth/register`
-- `verifyEmail(email, code)` — `POST /api/auth/verify-email`
-- `login(email, password)` — `POST /api/auth/login`
+- `#register(user)` — `POST /api/auth/register`
+- `#verifyEmail(email, code)` — `POST /api/auth/verify-email`
+- `#login(email, password)` — `POST /api/auth/login`
 
 Composed (call the above, assert/parse, return only what the caller
-needs):
+needs) — these are the only methods a test or action can call:
 
 - `createNewUser(user)` — registers, asserts `201`, pulls
   `verificationCode` straight off the register response (this
@@ -390,21 +398,21 @@ already-constructed ones, so a caller only needs the bare fixtures.
 <details>
 <summary><code>actions/auth/registerAndLoginUser.js</code></summary>
 
-Two interchangeable variants of the same outcome — a freshly
-registered, logged-in user with a real browser session — both with the
-identical signature `(page, request, user, actorLabel = null)`, so a
-caller can swap one for the other without changing anything else:
+Two variants of the same outcome — a freshly registered, logged-in
+user with a real browser session — but **not** the same signature;
+each takes only what it actually needs:
 
-- `registerAndLoginUser.viaApi(...)` — registers/verifies through
-  `AuthAPI` (fast, relies on this staging's convenience
-  `verificationCode` field), then logs in for real through `LoginPage`
-  so the browser gets an actual session — an API login alone returns a
-  token but sets nothing in the browser, so it can't carry a UI test
-  on its own.
-- `registerAndLoginUser.viaUi(...)` — the fully manual path: signs up
-  through `SignUpPage`, reads the code off `VerifyEmailPage`'s staging
-  popup, verifies, then logs in. Doesn't touch `request`/`AuthAPI` at
-  all. Portability note: on an environment without the staging popup,
+- `registerAndLoginUser.viaApi(page, request, user, actorLabel = null)`
+  — registers/verifies through `AuthAPI` (fast, relies on this
+  staging's convenience `verificationCode` field), then logs in for
+  real through `LoginPage` so the browser gets an actual session — an
+  API login alone returns a token but sets nothing in the browser, so
+  it can't carry a UI test on its own.
+- `registerAndLoginUser.viaUi(page, user, actorLabel = null)` — no
+  `request` parameter; the fully manual path: signs up through
+  `SignUpPage`, reads the code off `VerifyEmailPage`'s staging popup,
+  verifies, then logs in. Doesn't touch `request`/`AuthAPI` at all.
+  Portability note: on an environment without the staging popup,
   swap `verifyEmailPage.getVerificationCode()` for
   `TestmailService.getVerificationCode(tag)` (see
   `helpers/email/TestmailService.js` — currently unused, kept for

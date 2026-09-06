@@ -21,7 +21,7 @@ export class ProjectDetailsPage extends BasePage {
     );
   }
 
-  getRow(rowIndex) {
+  #getRow(rowIndex) {
     return this.tableRows.filter({
       has: this.page.locator('td.td-num', {
         hasText: new RegExp(`^${rowIndex}$`),
@@ -29,8 +29,8 @@ export class ProjectDetailsPage extends BasePage {
     });
   }
 
-  getCell(rowIndex, columnIndex) {
-    return this.getRow(rowIndex).locator('td').nth(columnIndex);
+  #getCell(rowIndex, columnIndex) {
+    return this.#getRow(rowIndex).locator('td').nth(columnIndex);
   }
 
   async openAndAssert() {
@@ -44,7 +44,7 @@ export class ProjectDetailsPage extends BasePage {
     });
   }
 
-  waitForRecordSaved() {
+  #waitForRecordSaved() {
     return this.page.waitForResponse(
       resp =>
         resp.request().method() === 'PUT' &&
@@ -57,10 +57,10 @@ export class ProjectDetailsPage extends BasePage {
     await this.step(
       `Click record field in column ${columnIndex}, row "${rowIndex}"`,
       async () => {
-        const cell = this.getCell(rowIndex, columnIndex);
+        const cell = this.#getCell(rowIndex, columnIndex);
         await cell.click();
 
-        const saved = this.waitForRecordSaved();
+        const saved = this.#waitForRecordSaved();
         await this.page.keyboard.press('Tab');
         await saved;
       },
@@ -72,11 +72,11 @@ export class ProjectDetailsPage extends BasePage {
       `Fill record field in column ${columnIndex}, row "${rowIndex}" ` +
         `with "${value}"`,
       async () => {
-        const cell = this.getCell(rowIndex, columnIndex);
+        const cell = this.#getCell(rowIndex, columnIndex);
         await cell.click();
         await cell.getByRole('textbox').fill(value);
 
-        const saved = this.waitForRecordSaved();
+        const saved = this.#waitForRecordSaved();
         await this.page.keyboard.press('Tab');
         await saved;
       },
@@ -87,7 +87,7 @@ export class ProjectDetailsPage extends BasePage {
     await this.step(
       `Click "Delete record" button for row "${rowIndex}"`,
       async () => {
-        const deleteButton = this.getRow(rowIndex).getByLabel('Delete record');
+        const deleteButton = this.#getRow(rowIndex).getByLabel('Delete record');
         await deleteButton.click();
       },
     );
@@ -136,7 +136,7 @@ export class ProjectDetailsPage extends BasePage {
     await this.step(
       `Assert record with row number "${rowIndex}" is added`,
       async () => {
-        await expect(this.getRow(rowIndex)).toBeVisible();
+        await expect(this.#getRow(rowIndex)).toBeVisible();
       },
     );
   }
@@ -146,7 +146,7 @@ export class ProjectDetailsPage extends BasePage {
       `Expect column ${columnIndex}, row "${rowIndex}" ` +
         `to have "${expectedValue}"`,
       async () => {
-        await expect(this.getCell(rowIndex, columnIndex)).toHaveText(
+        await expect(this.#getCell(rowIndex, columnIndex)).toHaveText(
           expectedValue,
         );
       },
@@ -157,7 +157,7 @@ export class ProjectDetailsPage extends BasePage {
     await this.step(
       `Assert record with row number "${rowIndex}" is deleted`,
       async () => {
-        await expect(this.getRow(rowIndex)).toHaveCount(0);
+        await expect(this.#getRow(rowIndex)).toHaveCount(0);
       },
     );
   }
