@@ -309,107 +309,17 @@ await signUpPage.signUp(user.fullName, user.email, user.password);
 
 ## 6. Writing a Page Object
 
-Each page is a plain JS class in `pages/` (or a domain subfolder —
-`pages/auth/`, `pages/projects/` — once there's more than one or two
-pages for that area), **extending `BasePage`**. Constructor takes the
-Playwright `page` and an optional `actorLabel`, and stores locators as
-readonly-by-convention fields. **Wrap every action and assertion in
-`this.step(title, callback)`** — inherited from `BasePage` — so it shows
-up named in the HTML report/trace.
-
-**Method order inside the class is fixed — always the same four groups,
-in this order, with no comments labeling them (the order alone is the
-documentation):**
-
-1. **Constructor** — every *static* locator (one that doesn't depend on
-   a parameter) as a field.
-2. **Floating locators** — methods that build a `Locator` dynamically
-   from a parameter, e.g. `getRow(rowIndex)`, `getCell(rowIndex,
-   columnIndex)`. These exist because the locator can't be built once in
-   the constructor — it needs an argument only known at call time. See
-   `getProjectCard(projectName)` / `getProjectCardActions(projectName)`
-   in `REFERENCE.md` under `pages/projects/ProjectsPage.js` for a worked
-   example, including why one of them returns an object of Locators
-   instead of a single one.
-3. **`openAndAssert()`**, if the page has one — see below.
-4. **Actions**, then **assertions** — one method per user action, plus
-   an `assertLoaded()` method anchored to something unique to that page.
-
-```js
-import { expect } from '../helpers/testStep';
-import { BasePage } from './BasePage';
-
-export class LoginPage extends BasePage {
-  constructor(page, actorLabel = null) {
-    super(page, actorLabel);
-    this.emailInput = page.getByRole('textbox', { name: 'Email' });
-    this.passwordInput = page.getByRole('textbox', { name: 'Password' });
-    this.logInButton = page.getByRole('button', { name: 'Log in' });
-    this.pageAnchor = page.getByRole('heading', { name: 'Log in' });
-  }
-
-  async openAndAssert() {
-    await this.goto();
-    await this.assertLoaded();
-  }
-
-  async goto() {
-    await this.step(`Go to login page`, async () => {
-      await this.page.goto('/login');
-    });
-  }
-
-  async login(email, password) {
-    await this.step(`Fill "Email" with "${email}"`, async () => {
-      await this.emailInput.fill(email);
-    });
-
-    await this.step(`Fill "Password" with "${password}"`, async () => {
-      await this.passwordInput.fill(password);
-    });
-
-    await this.step(`Click "Log in"`, async () => {
-      await this.logInButton.click();
-    });
-  }
-
-  async assertLoaded() {
-    await this.step(`Assert login page is loaded`, async () => {
-      await expect(this.pageAnchor).toBeVisible();
-    });
-  }
-}
-```
-
-This is a hard rule, not a style preference — a new Page Object method
-that doesn't use `this.step()` should get a "Request changes" in review.
-See `REFERENCE.md` under `pages/BasePage.js` for the full API, including
-`actorLabel` (for multi-user tests).
-
-**`openAndAssert()`** — `BasePage` declares it and throws by default
-(`openAndAssert() is not implemented for X`). Override it on any page
-that has a real, directly-reachable entry point: `goto()` +
-`assertLoaded()` for a page with a fixed URL (like `/login` above), or
-`waitForPage()` + `assertLoaded()` for a page reached via a dynamic URL
-(e.g. `ProjectDetailsPage`, at `/projects/:id` — there's nothing to
-`goto()` directly, you land there by clicking through). One call that
-lands on the page and confirms it actually loaded, instead of every
-caller doing both steps by hand — and it means you never need a bare
-`goto()` sitting alone in a test right before an `assertLoaded()` call.
-Skip it on pages with no standalone entry point of their own (e.g.
-`VerifyEmailPage`, only ever reached mid-flow with a real pending
-verification code — navigating there directly isn't a meaningful
-scenario).
-
-Prefer `getByRole` / `getByLabel` / `getByPlaceholder` locators over CSS
-selectors — they are more resistant to markup changes. If you're unsure
-what a locator should be, run `npx playwright codegen <url>` and interact
-with the page manually; it generates the locator code for you.
+Page Object inheritance (the `BasePage` pattern, fixed method order,
+`openAndAssert()`), API client patterns, and a getting-started guide
+for the shared fixtures/`registerAndLoginUser` moved to
+[`PATTERNS.md`](./PATTERNS.md) — read that before writing a new Page
+Object, API client, or test's `beforeEach`.
 
 ## 7. Keeping the docs updated
 
-Two files track the framework as it grows — update both **before opening
-your PR**, as part of finishing the scenario, not as an afterthought:
+Three files track the framework as it grows — update whichever apply
+**before opening your PR**, as part of finishing the scenario, not as
+an afterthought:
 
 - **`DEVLOG.md`** — add a new dated entry
   (`## YYYY-MM-DD HH:MM — short title`) describing what you built and how
@@ -420,10 +330,16 @@ your PR**, as part of finishing the scenario, not as an afterthought:
   public methods, and any gotchas (cost, edge cases, required env vars).
   If the file already has an entry, keep it accurate — don't leave a stale
   description behind after changing behavior.
+- **`PATTERNS.md`** — if you introduced or changed a *pattern* (not
+  just one class/method, but a convention future code should follow —
+  a new fixture composition style, a new action-layer convention),
+  update it too. A one-off helper is a `REFERENCE.md` entry; a
+  convention other people are expected to repeat is a `PATTERNS.md`
+  one.
 
-Both files exist so the next person (teammate or future you) can find out
-what already exists and how to use it without re-reading every diff in the
-git history.
+These files exist so the next person (teammate or future you) can find
+out what already exists and how to use it without re-reading every
+diff in the git history.
 
 ## 8. `TestmailService` — dormant real-email fallback
 

@@ -7,4 +7,6 @@ Product repositories: [prospect-tool-fe](https://github.com/prospect-tool-relay4
 Status: work in progress.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for local setup, project
-structure, and conventions for writing tests and Page Objects.
+structure, and git/commit conventions. See [PATTERNS.md](./PATTERNS.md)
+for how to write a Page Object, API client, or a new test using the
+shared fixtures.
