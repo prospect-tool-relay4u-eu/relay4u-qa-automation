@@ -27,7 +27,7 @@ export const registerAndLoginUser = {
     );
   },
 
-  async viaUi(page, request, user, actorLabel = null) {
+  async viaUi(page, user, actorLabel = null) {
     await testStep(
       `Register and log in new user via UI "${user.email}"`,
       async () => {
