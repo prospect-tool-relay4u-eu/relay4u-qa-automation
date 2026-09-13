@@ -7,6 +7,51 @@ written to be copy-pasted straight into the matching PR description.
 
 ---
 
+## 2026-09-13 — `TC-AUTH-010`: registration uniqueness is on email, not full name
+
+New test, added straight from the Master Test Plan (this scenario
+didn't exist there before — added as `TC-AUTH-010`, a parametrized
+case covering three combinations of matching/differing email and full
+name on a second registration attempt against an already-registered
+user).
+
+Confirmed against the real `relay4u-auth-service-be` source (not
+guessed): a duplicate email returns `409 Conflict` with body
+`{ code: "EMAIL_ALREADY_REGISTERED", ... }`
+(`GlobalExceptionHandler.handleEmailAlreadyRegistered`), regardless of
+whether the name on the second attempt matches or not — full name has
+no uniqueness constraint (`users` table has `uc_users_email` on
+`email`, nothing on `name`), so a different email with the same name
+succeeds normally (`201`).
+
+**New:**
+
+- `AuthAPI.assertRegistrationOutcome(user, expectedStatus,
+  expectedCode)` — the negative-path counterpart to `createNewUser`:
+  attempts `#register(user)` and asserts both status and the response
+  body's `code`, without ever handing the raw response back to the
+  caller (test bodies still never see a raw `response`, per the rule
+  in `PATTERNS.md`).
+- `actions/auth/registerUser.js` — the registration half of
+  `registerAndLoginUser` extracted into its own `.viaApi`/`.viaUi`
+  action, once a second caller (this test's `beforeEach`) needed the
+  exact same "register, assert it worked" sequence.
+  `registerAndLoginUser.viaApi`/`.viaUi` now call into this instead of
+  repeating its steps — composition, not inheritance: these are plain
+  functions, not classes, and there's nothing here that's an "is-a"
+  relationship, just "built from."
+
+**Changed:**
+
+- `api/auth/AuthAPI.js` — added `assertRegistrationOutcome`.
+- `actions/auth/registerAndLoginUser.js` — delegates to
+  `registerUser.viaApi`/`.viaUi` instead of duplicating its steps.
+- `tests/auth/tc-auth-010-duplicate-email-registration.spec.js` — new.
+- `REFERENCE.md` — added `registerUser.js` entry; updated `AuthAPI`
+  and `registerAndLoginUser.js` entries to match.
+
+---
+
 ## 2026-09-06 — `TC-AUTH-001` drops the real email; `TestmailService` parked, unused
 
 Bartosz's staging update (the on-screen "Staging verification code"
