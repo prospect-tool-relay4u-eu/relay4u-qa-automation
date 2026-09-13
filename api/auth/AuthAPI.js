@@ -55,12 +55,6 @@ export class AuthAPI extends BaseAPI {
     });
   }
 
-  async assertSuccessfulCreation(response) {
-    await this.step('Assert new user was created successfully', async () => {
-      expect(this.parseStatus(response)).toBe(200);
-    });
-  }
-
   async loginUser(user) {
     return await this.step(`Log in new user "${user.email}"`, async () => {
       const loginResponse = await this.#login(user.email, user.password);
@@ -71,5 +65,24 @@ export class AuthAPI extends BaseAPI {
 
       return token;
     });
+  }
+
+  async assertSuccessfulCreation(response) {
+    await this.step('Assert new user was created successfully', async () => {
+      expect(this.parseStatus(response)).toBe(200);
+    });
+  }
+
+  async assertRegistrationOutcome(user, expectedStatus, expectedCode) {
+    await this.step(
+      `Assert registering "${user.email}" returns ${expectedStatus}`,
+      async () => {
+        const response = await this.#register(user);
+        const body = await this.parseBody(response);
+
+        expect(this.parseStatus(response)).toBe(expectedStatus);
+        expect(body.code).toBe(expectedCode);
+      },
+    );
   }
 }

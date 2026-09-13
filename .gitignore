@@ -1,5 +1,6 @@
 node_modules/
 .env
+CLAUDE.local.md
 test-results/
 playwright-report/
 blob-report/

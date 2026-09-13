@@ -336,6 +336,12 @@ needs) — these are the only methods a test or action can call:
 - `assertSuccessfulCreation(response)` — asserts `200`
 - `loginUser(user)` — logs in, asserts `200`, returns the JWT `token`
   string from the response body
+- `assertRegistrationOutcome(user, expectedStatus, expectedCode)` —
+  attempts `#register(user)` and asserts both the HTTP status and the
+  `code` field of the response body (e.g. `'EMAIL_ALREADY_REGISTERED'`
+  on a `409`, `undefined` on a successful `201`) — the negative-path
+  counterpart to `createNewUser`; used by `TC-AUTH-010` to check
+  registration uniqueness without the test ever seeing a raw response
 
 </details>
 
@@ -396,29 +402,51 @@ internally from raw `page`/`request`, instead of taking
 already-constructed ones, so a caller only needs the bare fixtures.
 
 <details>
-<summary><code>actions/auth/registerAndLoginUser.js</code></summary>
+<summary><code>actions/auth/registerUser.js</code></summary>
 
-Two variants of the same outcome — a freshly registered, logged-in
-user with a real browser session — but **not** the same signature;
-each takes only what it actually needs:
+Just the registration half of the flow — extracted once a second
+caller needed the exact same "register, assert it worked" sequence
+(`registerAndLoginUser.viaApi`'s setup phase and `TC-AUTH-010`'s
+`beforeEach`). Two variants, **not** the same signature (each takes
+only what it needs):
 
-- `registerAndLoginUser.viaApi(page, request, user, actorLabel = null)`
-  — registers/verifies through `AuthAPI` (fast, relies on this
-  staging's convenience `verificationCode` field), then logs in for
-  real through `LoginPage` so the browser gets an actual session — an
-  API login alone returns a token but sets nothing in the browser, so
-  it can't carry a UI test on its own.
-- `registerAndLoginUser.viaUi(page, user, actorLabel = null)` — no
-  `request` parameter; the fully manual path: signs up through
-  `SignUpPage`, reads the code off `VerifyEmailPage`'s staging popup,
-  verifies, then logs in. Doesn't touch `request`/`AuthAPI` at all.
-  Portability note: on an environment without the staging popup,
-  swap `verifyEmailPage.getVerificationCode()` for
+- `registerUser.viaApi(authApi, user, actorLabel = null)` — takes an
+  already-constructed `AuthAPI` instance (not `request`); calls
+  `authApi.createNewUser(user)` + `assertSuccessfulCreation(...)`,
+  returns the creation response.
+- `registerUser.viaUi(page, user, actorLabel = null)` — signs up
+  through `SignUpPage`, reads the code off `VerifyEmailPage`'s staging
+  popup, verifies. Portability note: on an environment without the
+  staging popup, swap `verifyEmailPage.getVerificationCode()` for
   `TestmailService.getVerificationCode(tag)` (see
   `helpers/email/TestmailService.js` — currently unused, kept for
   exactly this case) and generate the user's email via
   `TestmailService.createTestEmail()` instead of `generateNewUser()`'s
   plain one.
+
+</details>
+
+<details>
+<summary><code>actions/auth/registerAndLoginUser.js</code></summary>
+
+Two variants of the same outcome — a freshly registered, logged-in
+user with a real browser session — but **not** the same signature;
+each takes only what it actually needs. Both compose `registerUser`
+above rather than repeating its steps (composition, not
+inheritance — these are plain functions, not classes, so there's
+nothing to extend):
+
+- `registerAndLoginUser.viaApi(page, request, user, actorLabel = null)`
+  — builds an `AuthAPI`, calls `registerUser.viaApi(authApi, user,
+  actorLabel)` (fast, relies on this staging's convenience
+  `verificationCode` field), then logs in for real through `LoginPage`
+  so the browser gets an actual session — an API login alone returns a
+  token but sets nothing in the browser, so it can't carry a UI test
+  on its own.
+- `registerAndLoginUser.viaUi(page, user, actorLabel = null)` — no
+  `request` parameter; calls `registerUser.viaUi(page, user,
+  actorLabel)`, then logs in through `LoginPage`. Doesn't touch
+  `request`/`AuthAPI` at all.
 
 Both end on `projectsPage.assertLoaded()`, confirming the whole chain
 actually landed the user somewhere real.
